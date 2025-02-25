@@ -1,0 +1,123 @@
+---
+title: "Informe Proyecto 2 entrega 1"
+author:
+- "Juan Luis Solórzano (carnet: 201598)"
+- - "Micaela Yataz (carnet: 18960)"
+date: "2025-01-20"
+output: pdf_document
+---
+
+
+# git: https://github.com/JusSolo/Mineria_Proyecto2.git
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+datos <- read.csv('train.csv')
+```
+
+## Análisis exploratorio
+
+### descripción de las variables:
+
+SalePrice: el precio de venta de la propiedad en dólares. Esta es la variable objetivo que se intenta predecir.
+MSSubClass: la clase de construcción
+MSZoning: la clasificación general de zonificación
+LotFrontage: pies lineales de calle conectada a la propiedad
+LotArea: tamaño del lote en pies cuadrados
+Street: tipo de acceso vial
+Alley: tipo de acceso por callejón
+LotShape: forma general de la propiedad
+LandContour: planitud de la propiedad
+Utilities: tipo de servicios públicos disponibles
+LotConfig: configuración del lote
+LandSlope: pendiente de la propiedad
+Neighborhood: ubicaciones físicas dentro de los límites de la ciudad de Ames
+Condition1: proximidad a la carretera principal o ferrocarril
+Condition2: proximidad a la carretera principal o ferrocarril (si hay un segundo presente)
+BldgType: tipo de vivienda
+HouseStyle: estilo de vivienda
+OverallQual: calidad general de materiales y acabados
+OverallCond: calificación general de la condición
+YearBuilt: año de construcción original
+YearRemodAdd: año de remodelación
+RoofStyle: tipo de techo
+RoofMatl: material del techo
+Exterior1st: revestimiento exterior de la casa
+Exterior2nd: revestimiento exterior de la casa (si se utiliza más de un material)
+MasVnrType: tipo de revestimiento de mampostería
+MasVnrArea: área del revestimiento de mampostería en pies cuadrados
+ExterQual: calidad del material exterior
+ExterCond: condición actual del material en el exterior
+Foundation: tipo de cimentación
+BsmtQual: altura del sótano
+BsmtCond: condición general del sótano
+BsmtExposure: paredes del sótano de salida directa o a nivel de jardín
+BsmtFinType1: calidad del área terminada del sótano (tipo 1)
+BsmtFinSF1: pies cuadrados terminados, tipo 1
+BsmtFinType2: calidad del área terminada del sótano (tipo 2, si está presente)
+BsmtFinSF2: pies cuadrados terminados, tipo 2
+BsmtUnfSF: pies cuadrados sin terminar del área del sótano
+TotalBsmtSF: total de pies cuadrados del área del sótano
+Heating: tipo de calefacción
+HeatingQC: calidad y condición de la calefacción
+CentralAir: aire acondicionado central
+Electrical: sistema eléctrico
+1stFlrSF: pies cuadrados del primer piso
+2ndFlrSF: pies cuadrados del segundo piso
+LowQualFinSF: pies cuadrados terminados de baja calidad (todas las plantas)
+GrLivArea: pies cuadrados de área habitable sobre el nivel del suelo
+BsmtFullBath: baños completos en el sótano
+BsmtHalfBath: medios baños en el sótano
+FullBath: baños completos sobre el nivel del suelo
+HalfBath: medios baños sobre el nivel del suelo
+Bedroom: número de dormitorios sobre el nivel del sótano
+Kitchen: número de cocinas
+KitchenQual: calidad de la cocina
+TotRmsAbvGrd: total de habitaciones sobre el nivel del suelo (no incluye baños)
+Functional: calificación de funcionalidad de la vivienda
+Fireplaces: número de chimeneas
+FireplaceQu: calidad de la chimenea
+GarageType: ubicación del garaje
+GarageYrBlt: año en que se construyó el garaje
+GarageFinish: acabado interior del garaje
+GarageCars: capacidad del garaje en número de autos
+GarageArea: tamaño del garaje en pies cuadrados
+GarageQual: calidad del garaje
+GarageCond: condición del garaje
+PavedDrive: acceso pavimentado
+WoodDeckSF: área de la terraza de madera en pies cuadrados
+OpenPorchSF: área del porche abierto en pies cuadrados
+EnclosedPorch: área del porche cerrado en pies cuadrados
+3SsnPorch: área del porche de tres estaciones en pies cuadrados
+ScreenPorch: área del porche con malla en pies cuadrados
+PoolArea: área de la piscina en pies cuadrados
+PoolQC: calidad de la piscina
+Fence: calidad de la cerca
+MiscFeature: característica miscelánea no cubierta en otras categorías
+MiscVal: valor en dólares de la característica miscelánea
+MoSold: mes en que se vendió
+YrSold: año en que se vendió
+SaleType: tipo de venta
+SaleCondition: condición de la ventaß
+
+### Estadisticas descriptivas de
+
+```{r}
+summary(datos)
+```
+
+
+### Prueba de normalidad en las variables cuantitativas
+
+### Analisis de  correlacion 
+
+### Analisis de grupos (K-medias o clustering jerárquico)
+
+## Conjuntos de entrenamiento y prueba
+
+## 
+
+
+
+
+
+
