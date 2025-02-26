@@ -6,11 +6,18 @@ author:
 date: "2025-01-20"
 output: pdf_document
 ---
+```{r, librerías, include=FALSE}
+library(dplyr)
+library(GGally)
+library(ggplot2)
+library(tidyr)
+```
 
 
 # git: https://github.com/JusSolo/Mineria_Proyecto2.git
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
 datos <- read.csv('train.csv')
 ```
 
@@ -18,104 +25,191 @@ datos <- read.csv('train.csv')
 
 ### descripción de las variables:
 
-SalePrice: el precio de venta de la propiedad en dólares. Esta es la variable objetivo que se intenta predecir.
-MSSubClass: la clase de construcción
-MSZoning: la clasificación general de zonificación
-LotFrontage: pies lineales de calle conectada a la propiedad
-LotArea: tamaño del lote en pies cuadrados
-Street: tipo de acceso vial
-Alley: tipo de acceso por callejón
-LotShape: forma general de la propiedad
-LandContour: planitud de la propiedad
-Utilities: tipo de servicios públicos disponibles
-LotConfig: configuración del lote
-LandSlope: pendiente de la propiedad
-Neighborhood: ubicaciones físicas dentro de los límites de la ciudad de Ames
-Condition1: proximidad a la carretera principal o ferrocarril
-Condition2: proximidad a la carretera principal o ferrocarril (si hay un segundo presente)
-BldgType: tipo de vivienda
-HouseStyle: estilo de vivienda
-OverallQual: calidad general de materiales y acabados
-OverallCond: calificación general de la condición
-YearBuilt: año de construcción original
-YearRemodAdd: año de remodelación
-RoofStyle: tipo de techo
-RoofMatl: material del techo
-Exterior1st: revestimiento exterior de la casa
-Exterior2nd: revestimiento exterior de la casa (si se utiliza más de un material)
-MasVnrType: tipo de revestimiento de mampostería
-MasVnrArea: área del revestimiento de mampostería en pies cuadrados
-ExterQual: calidad del material exterior
-ExterCond: condición actual del material en el exterior
-Foundation: tipo de cimentación
-BsmtQual: altura del sótano
-BsmtCond: condición general del sótano
-BsmtExposure: paredes del sótano de salida directa o a nivel de jardín
-BsmtFinType1: calidad del área terminada del sótano (tipo 1)
-BsmtFinSF1: pies cuadrados terminados, tipo 1
-BsmtFinType2: calidad del área terminada del sótano (tipo 2, si está presente)
-BsmtFinSF2: pies cuadrados terminados, tipo 2
-BsmtUnfSF: pies cuadrados sin terminar del área del sótano
-TotalBsmtSF: total de pies cuadrados del área del sótano
-Heating: tipo de calefacción
-HeatingQC: calidad y condición de la calefacción
-CentralAir: aire acondicionado central
-Electrical: sistema eléctrico
-1stFlrSF: pies cuadrados del primer piso
-2ndFlrSF: pies cuadrados del segundo piso
-LowQualFinSF: pies cuadrados terminados de baja calidad (todas las plantas)
-GrLivArea: pies cuadrados de área habitable sobre el nivel del suelo
-BsmtFullBath: baños completos en el sótano
-BsmtHalfBath: medios baños en el sótano
-FullBath: baños completos sobre el nivel del suelo
-HalfBath: medios baños sobre el nivel del suelo
-Bedroom: número de dormitorios sobre el nivel del sótano
-Kitchen: número de cocinas
-KitchenQual: calidad de la cocina
-TotRmsAbvGrd: total de habitaciones sobre el nivel del suelo (no incluye baños)
-Functional: calificación de funcionalidad de la vivienda
-Fireplaces: número de chimeneas
-FireplaceQu: calidad de la chimenea
-GarageType: ubicación del garaje
-GarageYrBlt: año en que se construyó el garaje
-GarageFinish: acabado interior del garaje
-GarageCars: capacidad del garaje en número de autos
-GarageArea: tamaño del garaje en pies cuadrados
-GarageQual: calidad del garaje
-GarageCond: condición del garaje
-PavedDrive: acceso pavimentado
-WoodDeckSF: área de la terraza de madera en pies cuadrados
-OpenPorchSF: área del porche abierto en pies cuadrados
-EnclosedPorch: área del porche cerrado en pies cuadrados
-3SsnPorch: área del porche de tres estaciones en pies cuadrados
-ScreenPorch: área del porche con malla en pies cuadrados
-PoolArea: área de la piscina en pies cuadrados
-PoolQC: calidad de la piscina
-Fence: calidad de la cerca
-MiscFeature: característica miscelánea no cubierta en otras categorías
-MiscVal: valor en dólares de la característica miscelánea
-MoSold: mes en que se vendió
-YrSold: año en que se vendió
-SaleType: tipo de venta
-SaleCondition: condición de la ventaß
+- **SalePrice**: cuantitativa, el precio de venta de la propiedad 
+- **MSSubClass**: cuantitativa, la clase de construcción
+- MSZoning:  cualitativa, la clasificación general de zona
+- **LotFrontage**: cuantitativa,   pies lineales de calle conectada a la propiedad
+- **LotArea**: cuantitativa,   tamaño del lote en pies cuadrados
+- Street: cualittiva,  tipo de acceso vial
+- Alley: tipo de acceso por callejón
+- LotShape: cualitativa, forma general de la propiedad
+- LandContour: cualitativa, relieve de la propiedad
+- Utilities: cualitativa, tipo de servicios públicos disponibles
+- LotConfig: cualitativa, configuración del lote
+- LandSlope: cualitativa, pendiente de la propiedad
+- Neighborhood: cualitativa, ubicaciones físicas dentro de los límites de la ciudad de Ames
+- Condition1:cualitativa, proximidad a la carretera principal o ferrocarril
+- Condition2:cualitativa, proximidad a la carretera principal o ferrocarril (si hay un segundo presente)
+- BldgType: cualitativa, tipo de vivienda
+- HouseStyle:cualitativa, estilo de vivienda
+- **OverallQual**: cuantitativa, calidad general de materiales y acabados
+- **OverallCond**: cuantitativa, calificación general de la condición
+- **YearBuilt**: cuantitativa, año de construcción original
+- **YearRemodAdd**: cuantitativa, año de remodelación
+- RoofStyle: cualitativa, tipo de techo
+- RoofMatl: cualitativa, material del techo
+- Exterior1st: cualitativa, revestimiento exterior de la casa
+- Exterior2nd: cualitativa, revestimiento exterior de la casa (si se utiliza más de un material)
+- MasVnrType: cualitativa, tipo de revestimiento de mampostería
+- **MasVnrArea**: cuantitativa,  área del revestimiento de mampostería en pies cuadrados
+- ExterQual: cualitativa, calidad del material exterior
+- ExterCond: cualitativa, condición actual del material en el exterior
+- Foundation: cualitativa, tipo de cimentación
+- BsmtQual: cualitativa, altura del sótano
+- BsmtCond: cualitativa,  condición general del sótano
+- BsmtExposure: cualitativa,  paredes del sótano de salida directa o a nivel de jardín
+- BsmtFinType1: cualitativa,  calidad del área terminada del sótano (tipo 1)
+- **BsmtFinSF1**: cuantitativa,   pies cuadrados terminados, tipo 1
+- BsmtFinType2: cualitativa,  calidad del área terminada del sótano (tipo 2, si está presente)
+- **BsmtFinSF2**: cuantitativa,  pies cuadrados terminados, tipo 2
+- **BsmtUnfSF**: cuantitativa,  pies cuadrados sin terminar del área del sótano
+- **TotalBsmtSF**: cuantitativa,  total de pies cuadrados del área del sótano
+- Heating: cualitativa,  tipo de calefacción
+- HeatingQC: cualitativa,  calidad y condición de la calefacción
+- CentralAir: cualitativa,  aire acondicionado central
+- Electrical: cualitativa,  sistema eléctrico
+- **X1stFlrSF**: cuantitativa,  pies cuadrados del primer piso
+- **X2ndFlrSF**: cuantitativa,  pies cuadrados del segundo piso
+- **LowQualFinSF**: cuantitativa,  pies cuadrados terminados de baja calidad (todas las plantas)
+- **GrLivArea**: cuantitativa,  pies cuadrados de área habitable sobre el nivel del suelo
+- **BsmtFullBath**: cuantitativa,  baños completos en el sótano
+- **BsmtHalfBath**: cuantitativa,  medios baños en el sótano
+- **FullBath**: cuantitativa,  baños completos sobre el nivel del suelo
+- **HalfBath**: cuantitativa,  medios baños sobre el nivel del suelo
+- **BedroomAbvGr**: cuantitativa,  número de dormitorios sobre el nivel del sótano
+- **KitchenAbvGr**: cuantitativa,  número de cocinas
+- KitchenQual: cualitativa, calidad de la cocina
+- **TotRmsAbvGrd**: cuantitativa,  total de habitaciones sobre el nivel del suelo (no incluye baños)
+- Functional: cualitativa, calificación de funcionalidad de la vivienda
+- **Fireplaces**: cuantitativa,  número de chimeneas
+- FireplaceQu: cualitativa, calidad de la chimenea
+- GarageType: cualitativa, ubicación del garaje
+- **GarageYrBlt**: cuantitativa,  año en que se construyó el garaje
+- GarageFinish: cualitativa, acabado interior del garaje
+- **GarageCars**: cuantitativa,  capacidad del garaje en número de autos
+- **GarageArea**: cuantitativa,  tamaño del garaje en pies cuadrados
+- GarageQual: cualitativa, calidad del garaje
+- GarageCond: cualitativa, condición del garaje
+- PavedDrive: cualitativa, acceso pavimentado
+- **WoodDeckSF**: cuantitativa,  área de la terraza de madera en pies cuadrados
+- **OpenPorchSF**: cuantitativa,  área del porche abierto en pies cuadrados
+- **EnclosedPorch**: cuantitativa,  área del porche cerrado en pies cuadrados
+- **X3SsnPorch**: cuantitativa,  área del porche de tres estaciones en pies cuadrados
+- **ScreenPorch**: cuantitativa,  área del porche con malla en pies cuadrados
+- **PoolArea**: cuantitativa,  área de la piscina en pies cuadrados
+- PoolQC: cualitativa, calidad de la piscina
+- Fence: cualitativa, calidad de la cerca
+- MiscFeature: cualitativa, característica miscelánea no cubierta en otras categorías
+- **MiscVal**: cuantitativa,  valor en dólares de la característica miscelánea
+- **MoSold**: cuantitativa,  mes en que se vendió
+- **YrSold**: cuantitativa,  año en que se vendió
+- SaleType: cualitativa, tipo de venta
+- **SaleCondition**: cuantitativa,  condición de la venta
 
-### Estadisticas descriptivas de
+### Estadisticas descriptivas
 
-```{r}
+```{r, resumen de todo, echo=FALSE}
 summary(datos)
 ```
+### Variables numéricas 
+```{r, separacion de datos numéricos,echo=FALSE}
+vars_cuantitativas <- c("SalePrice", "LotFrontage", "LotArea", "OverallQual", "OverallCond", 
+                        "YearBuilt", "YearRemodAdd", "MasVnrArea", "BsmtFinSF1", "BsmtFinSF2", 
+                        "BsmtUnfSF", "TotalBsmtSF", "X1stFlrSF", "X2ndFlrSF", "LowQualFinSF", 
+                        "GrLivArea", "BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", 
+                        "BedroomAbvGr", "KitchenAbvGr", "TotRmsAbvGrd", "Fireplaces", "GarageYrBlt", 
+                        "GarageCars", "GarageArea", "WoodDeckSF", "OpenPorchSF", "EnclosedPorch", 
+                        "X3SsnPorch", "ScreenPorch", "PoolArea", "MiscVal", "MoSold", "YrSold")
 
+datosC <- datos %>%
+  select(all_of(vars_cuantitativas))
+
+```
+#### Estadístias descriptivas:
+```{r, resumen, echo=FALSE}
+summary(datosC)
+```
+Podemos notar que la gran mayoría de variables tienen datos en todas las filas. Excepto para algunos casos que a continuación se explica como se llenaran los datos faltantes:
+
+- LotFrontage: pies lineales de calle conectada a la propiedad, si hay un Na se va a considerar que la propiedad no tiene acceso directo a la calle (por ejemplo tiene derecho de paso con otra propiedad que si tiene acceso a la calle). por lo que tiene sentido remplazar los Na's por 0.
+- MasVnrArea : por razon similar tiene sentido remplazar los Na's por 0
+- GarageYrBlt : el año de construccion del garaje, en este caso el Na's tiene sentido porque si una casa no tiene garaje, este no tiene año de construccio. Pero para no eliminar las casas sin garaje se va a remplazar los Na's por la mediana de la comlumna por ser un estadístico mas robunsto que la media, es decir que no tienede a sesgar los datos. 
+
+#### variables completadas
+```{r, completacion de los Na s, echo=FALSE}
+datosC$LotFrontage[is.na(datosC$LotFrontage)] <- 0
+datosC$MasVnrArea[is.na(datosC$MasVnrArea)] <- 0
+datosC$GarageYrBlt[is.na(datosC$GarageYrBlt)] <- median(datosC$GarageYrBlt, na.rm = TRUE)
+summary(datosC[,c("LotFrontage","MasVnrArea","GarageYrBlt")])
+```
+Otra cosa que se puede notar al leer los resultados del summary es que algunas variables como MiscVal, teniendo una media de 43 y un tercer cuartil de 0.00 tienen probablemente muchos datos atípicos de gran valor que sesgan la media. Vamos a normalizar los datos para poder hacer diagramas de caja y bigotes de todas variables a la ves. Para analizar visualmente el summary.
+
+### Analisis de grafica de caja y bigotes
+
+
+```{r, caja y bigotes, echo=FALSE}
+
+
+# Estandarización Z-score (centrar y dividir por la desviación estándar)
+dn <- as.data.frame(lapply(datosC, function(x) {
+  (x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)
+}))
+
+# Convertir a formato largo para ggplot
+datos_largos <- dn %>%
+  pivot_longer(cols = everything(), names_to = "Variable", values_to = "Valor")
+
+# Graficar los boxplots
+ggplot(datos_largos, aes(x = Variable, y = Valor)) +
+  geom_boxplot(fill = "lightblue", alpha = 0.7, outlier.color = "red") +
+  theme_minimal() +
+  coord_flip() +  # Rotar para mejor visualización
+  labs(title = "Grafica de caja y bigotes", x = "Variable", y = "Valor Estandarizado")
+
+
+```
+
+De esta esta grafica podemos notar que hay variables demasiado dispersas que podrían no ser buenas para elaborar una regresion. Otras que tienen casi todos los valores nulos. Tomando en cuenta que son variables de casas, puede ser que mansiones o casas muy grandes tengan otra escala de valores. Puede ser una buena idea crear clusters, alguna funcion que le asigne un cluster a una casa dada y crear regresiones lineales diferentes para cada cluster. Otra opcion sería no tomar en cuenta esas variables, quitar los datos atipicos y crear un modelo que sea bueno prediciendo el valor de una propiedad "usual". Para calcular el valor de mansiones o similares puede que el modelo no vaya a ver bueno. Para indagar más en estas opciones se hara un analisis de correlacion y un clustering.  
 
 ### Prueba de normalidad en las variables cuantitativas
+Tabla de resultados de la prueba de Shapiro-Wilk
+```{r, echo=FALSE}
+library(dplyr)
+library(nortest) # Para otras pruebas de normalidad
+
+# Función para aplicar el test de Shapiro-Wilk si la muestra es menor a 5000
+normalidad_test <- function(x) {
+  if (length(x) < 5000) {
+    return(shapiro.test(x)$p.value)
+  } else {
+    return(ks.test(x, "pnorm", mean(x, na.rm = TRUE), sd(x, na.rm = TRUE))$p.value)
+  }
+}
+
+# Aplicar el test de normalidad a todas las columnas numéricas
+p_values <- sapply(dn, normalidad_test)
+
+# Convertir a data frame
+resultados_normalidad <- data.frame(Variable = names(p_values), P_Value = p_values)
+
+# Mostrar resultados
+print(resultados_normalidad)
+
+```
+Se puede constatar que todas las variables tienen $p-valor<0.001$, por lo que se puede concluir que ninguna de las variables sigue una distribución normal. Pero para un modelo de regresión lineal no hay un supuesto de normalidad en la distribución de las variables, esto no debería de ser un problema. 
+Dicho usar k-medias para elaborar un clustering puede no ser la mejor opción. 
+
+# Esto es Lo que te toca Mica: 
 
 ### Analisis de  correlacion 
 
-### Analisis de grupos (K-medias o clustering jerárquico)
+
+
+### Analisis de grupos (Clustering jerárquico y k-medias {si queres})
 
 ## Conjuntos de entrenamiento y prueba
 
 ## 
-
 
 
 
