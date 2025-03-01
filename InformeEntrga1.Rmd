@@ -199,19 +199,192 @@ print(resultados_normalidad)
 Se puede constatar que todas las variables tienen $p-valor<0.001$, por lo que se puede concluir que ninguna de las variables sigue una distribución normal. Pero para un modelo de regresión lineal no hay un supuesto de normalidad en la distribución de las variables, esto no debería de ser un problema. 
 Dicho usar k-medias para elaborar un clustering puede no ser la mejor opción. 
 
-# Esto es Lo que te toca Mica: 
-
 ### Analisis de  correlacion 
+Matriz de correlacion entre variables numericas 
+```{r mariz de correlacion }
+
+rcor<-cor(datosC)
+det(rcor)
+
+```
+Notese que el determinante de la matriz de correlacion es:
+-7.391762e-38 por lo que hay mulicolinealidad enre las varibales tomadas. 
+
+```{r visualizacion con mapa de calor }
+library(corrplot)
+
+corrplot(rcor)
+
+```
+Con el mapa de calor se observa las varibales relacionadas positivamente, son:
+
+Sale price con overallQuall, Year Built con GarageYrBlt, GarageCars con GarageArea GrLivArea con TotRmsAbvGrd, 1stFlrSF con TotalBsmtSF
+
+No se observa correlaciones negativas que sean significativas.
+
+Las variables predictorias son las siguente:
+OverallQual que tiene relacion postiva al precio de venta..
+GarageArea, pues el tamano es predictor obvio, mayor area mayor precio.
+GarageArea, A mayor capacidad para varios carros, agrega valor la propiedad. 
+Year Built Las casas nuevas teenden a ser mas caras.
+TotalBsmtSF El espacio en el sotano puede aumentar el valor 
 
 
 
 ### Analisis de grupos (Clustering jerárquico y k-medias {si queres})
 
+```{r hopkins}
+library(hopkins)
+set.seed(123)
+hopkins(datosC)
+
+```
+El valor estadistico de hopkins cercano a 1 indica que los datos estan altamente agrupados, por lo que vale la pena hacer agrupamiento. Para verificar, se presenta el metodo grafico. 
+
+```{r VAT}
+library(factoextra)
+datos_dist<- dist(datosC)
+fviz_dist(datos_dist, show_labels=F)
+
+```
+En el mapa de calor se observan patrones de distancia que sugieren que hay tendencia a tener agrupamiento, afirmado lo que indicaba el valor estadistico de hopkins.
+
+
+```{r clustering jerarquico matriz distancia}
+matriz<-dist(datosC)
+
+```
+
+```{r cluster jerarquico y dendograma}
+hc<-hclust(datos_dist, method = "ward.D2")
+plot(hc, cex=0.5, axes=FALSE )
+rect.hclust(hc, k=3)
+
+```
+```{r}
+fviz_dend(hc, k=3, rect = T, cex = .5)
+```
+
+
+```{r cortar endograma}
+gr<-cutree(hc, k=3)
+datosC$gruposHc<-gr
+
+```
+
+```{r tamaño de los grupos}
+table(datosC$gruposHc)
+```
+
+```{r}
+print(table(datosC$gruposHc))
+```
+```{r}
+by(datosC, datosC[, "gruposHc"], colMeans)
+```
+En el grupo 1: casas de precio medio, con calidad general buena y area habiable moderada.
+En el grupo 2: Casas mas antiguas y menor precio, con menor calidad y area habitable pequeño .
+En el grupo 3: casas mas nuevas y de mayor precio, con calidad mayor y area habitable grande y garage mas grande.
+
+Veamos la silueta
+```{r }
+library(cluster)
+silhc<-silhouette(gr,matriz)
+mean(silhc[,3])
+
+```
+Aun con valor 0.5330381 sugiriendo que la agrupacion es razonablemente bueno, hay buena cohesion y separacion razonable. 
+```{r}
+plot(silhc, cex.names=.4, col=1:3)
+```
+En la agrupacion 3 es el menos bien definido requeriendo un analisis mas detallado. 
+La tabla de clustering resultante muestra las observaciones de cada agrupamiento 
+
+```{r}
+library(mclust)
+mc<-Mclust(datosC, 3)
+summary(mc)
+```
+## Variable Respuesta:
+La variable que se quiere predecir es el precio de las casasa, es decir (Sale Price). 
 ## Conjuntos de entrenamiento y prueba
 
-## 
+
+Se usara para un 80% de los datos para entrenamiento y 20% para la prueba. Manteniendo la proporcion de observaciones de cada cluster.  
 
 
+```{r}
+library(caret)
+#VAriable objetivo
+y<- datosC$SalePrice
+set.seed(123)
+trainI<- createDataPartition(y, p=0.8, list=FALSE)
+train<-datosC[trainI, ]
+test<-datosC[-trainI, ]
 
+cat("Conjunto de entrenamiento (cantidad de muestras:", nrow(train), ") \n ")
+head(train)
+
+cat("Conjunto de prueba (cantidad de muestras:", nrow(test), ") \n ")
+head(test)
+
+
+```
+
+
+```{r}
+modelo1 <- lm(SalePrice~. ,data = train)
+summary(modelo1)
+```
+
+Las variables significativas mostrando relacion con el precio de ventas, entran:
+OverallQual:   mas calidad, mayor precio de venta
+LotArea: mas area, mayor precio de venta
+YearBuild: Entre mas nueva la vivienda mayor precio de venta
+BsmtFinSF1: mayor pies cuadrados terminados de sotano mayor precio de venta
+X1stFlrSF: mayor pies cuadrados terminados en los pisos  mayor precio de venta
+BedroomAbvrGr: Mas cantidad de cuartos mayor precio de venta
+KitchenAbvGRr: menor numero de cocinas mayor precio de venta
+TotRms: Mas abitaciones mayor precio de venta
+GarageCars: Mas espacio de garage mayor precio de venta
+WoodDeckSF: Mayor cantidad de pies cuadrados de la cubierta de madera mayor precio de venta
+ScreePorch: Mayor pies cuadrado de porche con mosquitero mayor precio de venta
+PoolArea: mayor area de picina mayor precio de venta
+
+```{r Residuos}
+plot(modelo1)
+
+```
+
+La mayoria de puntos estan distribuidos aleatoriamente al rededor de cero, por lo que hay cierta heterocedasticiad, por dispersion de los residuales, sugiriendo que la dispersion de residuales aumenta ligeramene a medida que aumentan los valores ajustados. No respetando los supuestos de regresion lineal
+
+```{r}
+library(nortest)
+library(dplyr)
+lillie.test(modelo1$residuals)
+
+```
+
+El p-valor es menor a 0.5 por lo que se rechaza hipotesis nula, no hay distribucion normal. Se normaliza
+
+```{r normalizando train y test}
+train_normal <- as.data.frame(scale(train))
+test_normal <- as.data.frame(scale(test))
+```
+
+```{r}
+modelo1normalizado <- lm(SalePrice~. ,data = train_normal)
+summary(modelo1normalizado)
+plot(modelo1normalizado)
+```
+Notese que normalizando los datos no mejoro significativamente, por lo que se selecciona otros predictores.
+
+```{r Ridge matrices de entrenamiento y prueba}
+x_train <- model.matrix(SalePrice~., data = train)[, -1]
+y_train <- train$SalePrice
+
+x_test <- model.matrix(SalePrice~., data = test)[, -1]
+y_test <- test$SalePrice
+```
 
 
