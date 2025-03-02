@@ -343,7 +343,7 @@ modelo0 <- lm(SalePrice~. ,data = train[,c("SalePrice","OverallQual")])
 summary(modelo0)
 
 ```
-La ecuación de la regresión es: $SalePrice = -91015.7 + 44462.8 OverallQual$ 
+La ecuación de la regresión es: $SalePrice = -91015.7 + 44462.8 OverallQual$ , y el modelo explica en 64% de la varianza. 
 
 ```{r}
 
@@ -426,7 +426,7 @@ Notese que normalizando los datos no mejoro significativamente, por lo que se se
 
 
 
-# Regresion con variables seleccionadas
+# Regresion con variables significativas
 
 Vamos a hacer un ultimo modelo seleccionando solo variables significativas y que no tengan correlacion entre ellas, 
 ```{r}
@@ -456,8 +456,9 @@ cat("Variables seleccionadas:", variables_seleccionadas, "\n")
 
 ```{r}
 # Filtra las variables seleccionadas en el data frame
-formula <- as.formula(paste("SalePrice ~", paste(variables_seleccionadas, collapse = " + ")))
+formula <- as.formula(paste("SalePrice ~", paste(variables_seleccionadas, collapse = "+")))
 modelo2 <- lm(formula, data = train)
+modelo2 <-step(modelo2, direction = "backward")
 
 # Resumen del modelo2
 summary(modelo2)
@@ -467,6 +468,38 @@ summary(modelo2)
 ```{r}
 plot(modelo2)
 ```
+
+Este ultimo modelos aun tiene heterocedasticidad, no parece ser normal, tiene unos 3 puntos atípicos y esplic un 85% de la varianza. 
+
+
+# Comparacion de los modelos
+
+```{r}
+
+AIC(modelo0)
+AIC(modelo1)
+AIC(modelo2)
+
+```
+
+
+Podemos notar que el AIC del primer modeo es e más alto. Pero entre el modelo1 y el modelo2 el AIC es parecido aunque el modelo2 tiene uno un poco más pequeño. Podemos concluir que el último modelo es el mejor. Dicho eso ningun modelo cumple con los supuestos para que un modelo lineal sea válido. Si analizamos las gráfica podemos notar que el modelo es bueno y cumple mejor los supuestos para los valores de enmedio. Hacer un modelo por clister podría volver validos los supuestos. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
