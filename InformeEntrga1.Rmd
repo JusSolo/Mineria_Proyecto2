@@ -173,7 +173,7 @@ De esta esta grafica podemos notar que hay variables demasiado dispersas que pod
 
 ### Prueba de normalidad en las variables cuantitativas
 Tabla de resultados de la prueba de Shapiro-Wilk
-```{r, echo=FALSE}
+```{r,normalidad,  echo=FALSE}
 library(dplyr)
 library(nortest) # Para otras pruebas de normalidad
 
@@ -201,7 +201,7 @@ Dicho usar k-medias para elaborar un clustering puede no ser la mejor opción.
 
 ### Analisis de  correlacion 
 Matriz de correlacion entre variables numericas 
-```{r mariz de correlacion }
+```{r mariz de correlacion}
 
 rcor<-cor(datosC)
 det(rcor)
@@ -210,7 +210,7 @@ det(rcor)
 Notese que el determinante de la matriz de correlacion es:
 -7.391762e-38 por lo que hay mulicolinealidad enre las varibales tomadas. 
 
-```{r visualizacion con mapa de calor }
+```{r visualizacion con mapa de calor, echo=FALSE}
 library(corrplot)
 
 corrplot(rcor)
@@ -231,9 +231,9 @@ TotalBsmtSF El espacio en el sotano puede aumentar el valor
 
 
 
-### Analisis de grupos (Clustering jerárquico y k-medias {si queres})
+### Analisis de grupos 
 
-```{r hopkins}
+```{r hopkins, echo=FALSE}
 library(hopkins)
 set.seed(123)
 hopkins(datosC)
@@ -255,15 +255,13 @@ matriz<-dist(datosC)
 
 ```
 
-```{r cluster jerarquico y dendograma}
+```{r cluster jerarquico y dendograma, echo=FALSE}
 hc<-hclust(datos_dist, method = "ward.D2")
 plot(hc, cex=0.5, axes=FALSE )
 rect.hclust(hc, k=3)
 
 ```
-```{r}
-fviz_dend(hc, k=3, rect = T, cex = .5)
-```
+
 
 
 ```{r cortar endograma}
@@ -276,18 +274,18 @@ datosC$gruposHc<-gr
 table(datosC$gruposHc)
 ```
 
-```{r}
+```{r, print 1}
 print(table(datosC$gruposHc))
 ```
-```{r}
+```{r, print 2}
 by(datosC, datosC[, "gruposHc"], colMeans)
 ```
 En el grupo 1: casas de precio medio, con calidad general buena y area habiable moderada.
 En el grupo 2: Casas mas antiguas y menor precio, con menor calidad y area habitable pequeño .
 En el grupo 3: casas mas nuevas y de mayor precio, con calidad mayor y area habitable grande y garage mas grande.
 
-Veamos la silueta
-```{r }
+#### Veamos la silueta
+```{r silueta,echo=FALSE}
 library(cluster)
 silhc<-silhouette(gr,matriz)
 mean(silhc[,3])
@@ -305,12 +303,12 @@ library(mclust)
 mc<-Mclust(datosC, 3)
 summary(mc)
 ```
+# Modelos de regresion lineal
 ## Variable Respuesta:
 La variable que se quiere predecir es el precio de las casasa, es decir (Sale Price). 
 ## Conjuntos de entrenamiento y prueba
 
-
-Se usara para un 80% de los datos para entrenamiento y 20% para la prueba. Manteniendo la proporcion de observaciones de cada cluster.  
+Se usara para un 80% de los datos para entrenamiento y 20% para la prueba. Manteniendo la proporcion de observaciones de cada cluster. 
 
 
 ```{r}
@@ -330,9 +328,55 @@ head(test)
 
 
 ```
+#  Modelo univariado de regresión
+Primero elijamos la variable independiente para el modelos univariado, lo idóneo es elegir la variable con mayor correlación. A continuación se muestras las 5 variables con mayor correlación a SalePrice:
+```{r, echo=FALSE}
+cor_saleprice <- sort(rcor["SalePrice", ], decreasing = TRUE)
+
+head(cor_saleprice, 5)
+
+```
+La variable que se utilizara para este primer modelo es OverallQual, pues es la que mayor correlacion con SalePrice tiene (sin ser SalePrice). 
+
+```{r, fit modelo univariado}
+modelo0 <- lm(SalePrice~. ,data = train[,c("SalePrice","OverallQual")])
+summary(modelo0)
+
+```
+La ecuación de la regresión es: $SalePrice = -91015.7 + 44462.8 OverallQual$ 
+
+```{r}
+
+plot(train$OverallQual, train$SalePrice, 
+     main = "Regresión lineal",
+     xlab = "OverallQual", 
+     ylab = "SalePrice",
+     pch = 16, col = "blue")
+
+# Agrega la línea de regresión ajustada
+abline(modelo0, col = "red", lwd = 2)
+
+# Agrega una leyenda
+legend("topleft", legend = c("Datos", "Línea de Regresión"), 
+       col = c("blue", "red"), pch = c(16, NA), lwd = c(NA, 2))
+
+```
 
 
 ```{r}
+plot(modelo0)
+```
+
+Se puede ver que la varianza no es constante,  En el gráfico q-q se observa que los residuos no parecen estar normalmente distribuidos. Este modelo lineal no parece ser muy bueno. 
+
+```{r}
+lillie.test(modelo0$residuals)
+```
+Los residuos tampoco se distribuyen de manera normal. En resumen este modelo lineal de una variable no es bueno. 
+
+# Modelo con todas las variables
+
+```{r, fit modelo todas las variables}
 modelo1 <- lm(SalePrice~. ,data = train)
 summary(modelo1)
 ```
@@ -379,12 +423,54 @@ plot(modelo1normalizado)
 ```
 Notese que normalizando los datos no mejoro significativamente, por lo que se selecciona otros predictores.
 
-```{r Ridge matrices de entrenamiento y prueba}
-x_train <- model.matrix(SalePrice~., data = train)[, -1]
-y_train <- train$SalePrice
 
-x_test <- model.matrix(SalePrice~., data = test)[, -1]
-y_test <- test$SalePrice
+
+
+# Regresion con variables seleccionadas
+
+Vamos a hacer un ultimo modelo seleccionando solo variables significativas y que no tengan correlacion entre ellas, 
+```{r}
+library(glmnet)
+
+# Prepara las variables independientes (X) y la dependiente (y)
+X <- model.matrix(SalePrice ~ . , data = train)[, -1]  # Matriz sin el intercepto
+y <- train$SalePrice
+
+set.seed(123)
+modelo_lasso <- cv.glmnet(X, y, alpha = 1)  # alpha = 1 para Lasso
+
+# Muestra el mejor lambda según validación cruzada
+mejor_lambda <- modelo_lasso$lambda.min
+cat("Mejor lambda:", mejor_lambda, "\n")
+
 ```
+
+```{r}
+coeficientes <- coef(modelo_lasso, s = "lambda.min")
+variables_seleccionadas <- rownames(coeficientes)[coeficientes[, 1] != 0]
+variables_seleccionadas <- variables_seleccionadas[-1]  # Excluye el intercepto
+
+cat("Variables seleccionadas:", variables_seleccionadas, "\n")
+
+```
+
+```{r}
+# Filtra las variables seleccionadas en el data frame
+formula <- as.formula(paste("SalePrice ~", paste(variables_seleccionadas, collapse = " + ")))
+modelo2 <- lm(formula, data = train)
+
+# Resumen del modelo2
+summary(modelo2)
+
+```
+
+```{r}
+plot(modelo2)
+```
+
+
+
+
+
 
 
