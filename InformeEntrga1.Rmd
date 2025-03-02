@@ -486,9 +486,29 @@ AIC(modelo2)
 Podemos notar que el AIC del primer modeo es e más alto. Pero entre el modelo1 y el modelo2 el AIC es parecido aunque el modelo2 tiene uno un poco más pequeño. Podemos concluir que el último modelo es el mejor. Dicho eso ningun modelo cumple con los supuestos para que un modelo lineal sea válido. Si analizamos las gráfica podemos notar que el modelo es bueno y cumple mejor los supuestos para los valores de enmedio. Hacer un modelo por clister podría volver validos los supuestos. 
 
 
+```{r  BIC}
+
+BIC(modelo0)
+BIC(modelo1)
+BIC(modelo2)
 
 
+```Nótese que el valor mas bajo de BIC es del modelo 2, concluyendo que es el mejor, coincidiendo con AIC. 
 
+Veamos que tan bueno es el modelo, para ello la grafica siguiente de valores reales y las predicciones para SalePrice.
+```{r predicciones del mejor modelo}
+
+pred_modelo2<-predict(modelo2, newdata = train)
+
+#grafico
+plot(test$SalePrice, col="blue", main = "predicion de Modelo 2 vs valores originales")
+points(pred_modelo2, col="red")
+legend("topright", legent =c("original", "prediccion"), colc("blue", "red"), pch=1, cex=0.8)
+
+
+```
+
+Los puntos azules representan los datos reales de SalePrice en el conjunto de prueba, los puntos rojos las prediciones segun el modelo 2 para SalePrice. Nótese que en general los puntos rojos, que son las predicciones siguen las tendencias de los puntos azules, valores reales. Indicando que el modelo capta las variaciones, aunque hay diferencia significativa entre la predicion y el valor real en algunos puntos. Por lo que el modelo tiene capacidad de captruara algunas tendencias pero tiene limitaciones.
 
 
 
