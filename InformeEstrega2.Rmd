@@ -1,0 +1,75 @@
+---
+title: "Informe Proyecto 2 entrega 2"
+author:
+- "Juan Luis Solórzano (carnet: 201598)"
+- - "Micaela Yataz (carnet: 18960)"
+date: "2025-01-20"
+output: pdf_document
+---
+```{r, librerías y base de datos,include=FALSE}
+library(dplyr)
+library(GGally)
+library(ggplot2)
+library(tidyr)
+library(caret)
+datos <- read.csv('train.csv')
+
+vars_cuantitativas <- c("SalePrice", "LotFrontage", "LotArea", "OverallQual", "OverallCond", 
+                        "YearBuilt", "YearRemodAdd", "MasVnrArea", "BsmtFinSF1", "BsmtFinSF2", 
+                        "BsmtUnfSF", "TotalBsmtSF", "X1stFlrSF", "X2ndFlrSF", "LowQualFinSF", 
+                        "GrLivArea", "BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", 
+                        "BedroomAbvGr", "KitchenAbvGr", "TotRmsAbvGrd", "Fireplaces", "GarageYrBlt", 
+                        "GarageCars", "GarageArea", "WoodDeckSF", "OpenPorchSF", "EnclosedPorch", 
+                        "X3SsnPorch", "ScreenPorch", "PoolArea", "MiscVal", "MoSold", "YrSold")
+
+datosC <- datos %>%
+  select(all_of(vars_cuantitativas))
+# completar variables:
+
+datosC$LotFrontage[is.na(datosC$LotFrontage)] <- 0
+datosC$MasVnrArea[is.na(datosC$MasVnrArea)] <- 0
+datosC$GarageYrBlt[is.na(datosC$GarageYrBlt)] <- median(datosC$GarageYrBlt, na.rm = TRUE)
+
+
+y<- datosC$SalePrice
+set.seed(123)
+trainI<- createDataPartition(y, p=0.8, list=FALSE)
+train<-datosC[trainI, ]
+test<-datosC[-trainI, ]
+
+
+
+```
+
+
+# git: https://github.com/JusSolo/Mineria_Proyecto2.git
+
+
+# 1 Se usaran los mismos conjuntos de entrenamiento y prueba que usó para los modelos de regresión lineal en la entrega anterior.
+
+```{r, echo=FALSE}
+cat("Conjunto de entrenamiento (cantidad de muestras:", nrow(train), ") \n ")
+head(train)
+
+cat("Conjunto de prueba (cantidad de muestras:", nrow(test), ") \n ")
+head(test)
+```
+
+
+
+# 2.  Elabore un árbol de regresión para predecir el precio de las casas usando todas las variables.
+
+# 3. Úselo para predecir y analice el resultado. ¿Qué tal lo hizo?
+
+# 4. Haga, al menos, 3 modelos más, cambiando el parámetro de la profundidad del árbol. ¿Cuál es el mejor modelo para predecir el precio de las casas?
+
+# 5. Compare los resultados con el modelo de regresión lineal de la hoja anterior, ¿cuál lo hizo mejor?
+
+# 6. Dependiendo del análisis exploratorio elaborado cree una variable respuesta que le permita clasificar las casas en Económicas, Intermedias o Caras. Los límites de estas clases
+deben tener un fundamento en la distribución de los datos de precios, y estar bien
+explicados
+
+# 7. Elabore un árbol de clasificación utilizando la variable respuesta que creó en el punto
+anterior. Explique los resultados a los que llega. Muestre el modelo gráficamente. Recuerde
+que la nueva variable respuesta es categórica, pero se generó a partir de los precios de las
+casas, no incluya el precio de venta para entrenar el modelo.
