@@ -12,6 +12,8 @@ library(GGally)
 library(ggplot2)
 library(tidyr)
 library(caret)
+library(rpart)
+library(rpart.plot)
 datos <- read.csv('train.csv')
 
 vars_cuantitativas <- c("SalePrice", "LotFrontage", "LotArea", "OverallQual", "OverallCond", 
@@ -31,23 +33,43 @@ datosC$MasVnrArea[is.na(datosC$MasVnrArea)] <- 0
 datosC$GarageYrBlt[is.na(datosC$GarageYrBlt)] <- median(datosC$GarageYrBlt, na.rm = TRUE)
 
 
-y<- datosC$SalePrice
-set.seed(123)
-trainI<- createDataPartition(y, p=0.8, list=FALSE)
-train<-datosC[trainI, ]
-test<-datosC[-trainI, ]
-
-
-
 ```
 
 
 # git: https://github.com/JusSolo/Mineria_Proyecto2.git
 
 
-# 1 Se usaran los mismos conjuntos de entrenamiento y prueba que usó para los modelos de regresión lineal en la entrega anterior.
+# 1 Se usaran los mismos conjuntos de entrenamiento y prueba que usó para los modelos de regresión lineal en la entrega anterior. 
+ Pero antes se agregará la varible nueva CategoriaPrecios, que agrupe los precios de las casas en 3 categorías: Económicas, Intermedias o Caras.
 
-```{r, echo=FALSE}
+```{r, creacion de nueva variable, echo=FALSE}
+# Crear una nueva variable categórica basada en los cuantiles de SalePrice
+datosC$CategoriaPrecio <- cut(
+  datosC$SalePrice,
+  breaks = quantile(datosC$SalePrice, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE),
+  labels = c("Económicas", "Intermedias", "Caras"),
+  include.lowest = TRUE
+)
+
+# Convertir la variable en un factor
+datosC$CategoriaPrecio <- as.factor(datosC$CategoriaPrecio)
+
+# Verificar la distribución
+table(datosC$CategoriaPrecio)
+
+```
+
+```{r, recuperacion de el training y test }
+y<- datosC$SalePrice
+set.seed(123)
+trainI<- createDataPartition(y, p=0.8, list=FALSE)
+train<-datosC[trainI, ]
+test<-datosC[-trainI, ]
+```
+
+
+
+```{r, mostrando los datos, echo=FALSE,}
 cat("Conjunto de entrenamiento (cantidad de muestras:", nrow(train), ") \n ")
 head(train)
 
@@ -57,19 +79,102 @@ head(test)
 
 
 
-# 2.  Elabore un árbol de regresión para predecir el precio de las casas usando todas las variables.
+# 2.  Arbol de regresión para predecir el precio de las casas usando todas las variables.
+
+```{r, primer modelo}
+arbol1 <- rpart(SalePrice~.,data = train)
+rpart.plot(arbol1)
+```
+
+
 
 # 3. Úselo para predecir y analice el resultado. ¿Qué tal lo hizo?
+```{r prediccion modelo1}
+# Calcular las predicciones
+predicciones <- predict(arbol1, newdata = test)
+
+# Calcular MSE (Error Cuadrático Medio)
+mse <- mean((train$SalePrice - predicciones)^2)
+
+# Calcular MAE (Error Absoluto Medio)
+mae <- mean(abs(train$SalePrice - predicciones))
+
+# Mostrar los resultados
+cat("MSE:", mse, "\nMAE:", mae)
+
+```
+
+```{r, plot modelo1}
+
+
+# Graficar los valores originales del conjunto de prueba
+plot(test$SalePrice, col = "blue", main = "Predicciones vs valores originales (Test)", 
+     xlab = "Índice", ylab = "SalePrice")
+
+# Agregar las predicciones al gráfico
+points(predicciones, col = "red")
+
+# Agregar la leyenda
+legend("topright", legend = c("Original", "Predicción"), 
+       col = c("blue", "red"), pch = 1, cex = 0.8)
+
+```
+El model tiene un MAE y un MSE altos, la predicción es muy burda. 
 
 # 4. Haga, al menos, 3 modelos más, cambiando el parámetro de la profundidad del árbol. ¿Cuál es el mejor modelo para predecir el precio de las casas?
 
+
+```{r, modelos con profundidad acotada}
+
+
+# Modelo original (sin especificar maxdepth, usa el máximo por defecto)
+arbol1 <- rpart(SalePrice ~ ., data = train)
+
+# Modelos con diferentes profundidades
+arbol2 <- rpart(SalePrice ~ ., data = train, control = rpart.control(maxdepth = 4))
+arbol3 <- rpart(SalePrice ~ ., data = train, control = rpart.control(maxdepth = 3))
+arbol4 <- rpart(SalePrice ~ ., data = train, control = rpart.control(maxdepth = 2))
+
+# Función para calcular MSE y MAE
+calcular_errores <- function(modelo) {
+  pred <- predict(modelo, newdata = train)
+  mse <- mean((train$SalePrice - pred)^2)
+  mae <- mean(abs(train$SalePrice - pred))
+  return(c(MSE = mse, MAE = mae))
+}
+
+# Calcular errores para cada modelo
+errores1 <- calcular_errores(arbol1)
+errores2 <- calcular_errores(arbol2)
+errores3 <- calcular_errores(arbol3)
+errores4 <- calcular_errores(arbol4)
+
+# Mostrar los resultados
+resultados <- data.frame(
+  Modelo = c("Original (sin maxdepth)", "maxdepth = 4", "maxdepth = 3", "maxdepth = 2"),
+  MSE = c(errores1[1], errores2[1], errores3[1], errores4[1]),
+  MAE = c(errores1[2], errores2[2], errores3[2], errores4[2])
+)
+
+print(resultados)
+
+# Identificar el mejor modelo (menor MSE)
+mejor_modelo <- resultados[which.min(resultados$MSE), "Modelo"]
+cat("\nEl mejor modelo según el MSE es:", mejor_modelo, "\n")
+
+```
+```{r, plot arbol de modelos}
+rpart.plot(arbol2, main = "Árbol con maxdepth = 4")
+rpart.plot(arbol3, main = "Árbol con maxdepth = 3")
+rpart.plot(arbol4, main = "Árbol con maxdepth = 2")
+
+# Resetear la ventana gráfica
+par(mfrow = c(1, 1))
+```
+Como es de esperar a mayor profundidad mayor error
+
 # 5. Compare los resultados con el modelo de regresión lineal de la hoja anterior, ¿cuál lo hizo mejor?
 
-# 6. Dependiendo del análisis exploratorio elaborado cree una variable respuesta que le permita clasificar las casas en Económicas, Intermedias o Caras. Los límites de estas clases
-deben tener un fundamento en la distribución de los datos de precios, y estar bien
-explicados
+# 6. Dependiendo del análisis exploratorio elaborado cree una variable respuesta que le permita clasificar las casas en Económicas, Intermedias o Caras. Los límites de estas clases deben tener un fundamento en la distribución de los datos de precios, y estar bien explicados
 
-# 7. Elabore un árbol de clasificación utilizando la variable respuesta que creó en el punto
-anterior. Explique los resultados a los que llega. Muestre el modelo gráficamente. Recuerde
-que la nueva variable respuesta es categórica, pero se generó a partir de los precios de las
-casas, no incluya el precio de venta para entrenar el modelo.
+# 7. Elabore un árbol de clasificación utilizando la variable respuesta que creó en el punto anterior. Explique los resultados a los que llega. Muestre el modelo gráficamente. Recuerde que la nueva variable respuesta es categórica, pero se generó a partir de los precios de las casas, no incluya el precio de venta para entrenar el modelo.
