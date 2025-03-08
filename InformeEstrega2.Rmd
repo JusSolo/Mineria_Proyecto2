@@ -218,10 +218,72 @@ cat("\nEl mejor modelo según el MSE es:", mejor_modelo, "\n")
 ```
 # 6. Dependiendo del análisis exploratorio elaborado cree una variable respuesta que le permita clasificar las casas en Económicas, Intermedias o Caras. Los límites de estas clases deben tener un fundamento en la distribución de los datos de precios, y estar bien explicados
 
+```{r Distribucion de precios de las casa }
+hist(train$SalePrice, main="Distribucion de SalePrice", xlab="Precio de Venta")
 
+boxplot(train$SalePrice, main="Boxplot de SalePrice")
+summary(train$SalePrice)
+quantile(train$SalePrice, probs=c(0.25, 0.5, 0.75))
+```
 
+Notese que en el histograma hay asimetria positiva, por lo que hay cola larga a los precios altos.
 
+En el Boxplot se nota valores atipicos, que son significativamente altos, que pueden conciderarse como las casas con precios muy altos, por lo que se concidera crear otra cateoria, que se llame lujo representado las casas que en precio son superiores a 400000.
 
+La creacion de la variable categorica se basa en los cuartiles de SalePrice, con los cortes lógicos de la siguiente forma:
+
+Económicas, hasta el primer cuartil (129975)
+Intermedias, entre el primer y tercer cuartil (129975, 214000)
+Cara, por encima del tercer cuartil hasta el comienzo de puntos atipicos (214000, 400000)
+Lujo, Por encima de los valores atipicos (400000)
+
+La distribución queda de la siguente forma.
+
+```{r creacion de variable categorica}
+train$precio_categoria<-cut(train$SalePrice, 
+                            breaks = c(0, 129975, 214000, 400000, Inf),
+                            labels = c("Economica", "Intermedia", "Cara", "Lujo"),
+                            include.lowest = TRUE)
+table(train$precio_categoria)
+
+```
 
 # 7. Elabore un árbol de clasificación utilizando la variable respuesta que creó en el punto anterior. Explique los resultados a los que llega. Muestre el modelo gráficamente. Recuerde que la nueva variable respuesta es categórica, pero se generó a partir de los precios de las casas, no incluya el precio de venta para entrenar el modelo.
-# 7. Elabore un árbol de clasificación utilizando la variable respuesta que creó en el punto anterior. Explique los resultados a los que llega. Muestre el modelo gráficamente. Recuerde que la nueva variable respuesta es categórica, pero se generó a partir de los precios de las casas, no incluya el precio de venta para entrenar el modelo.
+
+
+```{r arbol de clasificacion}
+arbol_clasificacion<- rpart(precio_categoria ~ .-SalePrice, data = train )
+summary(arbol_clasificacion)
+```
+
+
+```{r train y test con nueva variable}
+set.seed(123)
+corte<-sample(1:nrow(train), 0.8 * nrow(train))
+train_set<-train[corte, ]
+test_set<-train[-corte, ]
+train$SalePrice<-NULL
+test$SalePrice<-NULL
+
+``` 
+
+```{r modelo1_class}
+modelo1_clasificacion <- rpart(precio_categoria~.,data = train, method = "class")
+rpart.plot(modelo1_clasificacion)
+```
+
+```{r matriz de confusion}
+predicciones_clas<-predict(modelo1_clasificacion, newdata = train, type = "class")
+matriz_confusion<- table(train$precio_categoria, predicciones_clas)
+print(matriz_confusion)
+```
+
+Según la matriz de confusión, el modelo tiene una precision general de 81.7%, por lo que clasifica correctamente la mayoria de las viviendas, con dificulades para casificar correctamente las categorias de economicas y de lujo.
+
+```{r grafico del arbol}
+rpart.plot(modelo1_clasificacion, type = 4, extra=1)
+
+```
+
+El árbol utiliza las varibales GrLivArea, OverallQual, BsmtFinSF1, YearBuilt, para clasificar las viviendas. Mostrando que el tamaño, calidad y antiguedad de la casa son los factores que mas influyen en el precio. Las viviendas de precio alto son las de alta calidad y gran área. Las de baja calidad y area mas pequeña las calasifica como en precio bajo. La clasificacion de Lujo tiene menor cantidad de de valores de acierto, que puede deberse a pocos datos en esta categoria a comparacion con las otras. 
+
