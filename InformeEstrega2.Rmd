@@ -2,7 +2,7 @@
 title: "Informe Proyecto 2 entrega 2"
 author:
 - "Juan Luis Solórzano (carnet: 201598)"
-- - "Micaela Yataz (carnet: 18960)"
+- "Micaela Yataz (carnet: 18960)"
 date: "2025-01-20"
 output: pdf_document
 ---
@@ -175,6 +175,53 @@ Como es de esperar a mayor profundidad mayor error
 
 # 5. Compare los resultados con el modelo de regresión lineal de la hoja anterior, ¿cuál lo hizo mejor?
 
+```{r, Comparacion del mejor modelo actual (arbol1) con el mejor modelo de la hoja anterior (modelo1) }
+
+
+# Modelo original (sin especificar maxdepth, usa el máximo por defecto)
+arbol1 <- rpart(SalePrice ~ ., data = train)
+
+
+#modelo de hoja anterior
+# Filtra las variables seleccionadas en el data frame
+formula <- as.formula(paste("SalePrice ~", paste(variables_seleccionadas, collapse = "+")))
+modelo2 <- lm(formula, data = train)
+modelo2 <-step(modelo2, direction = "backward")
+
+
+# Función para calcular MSE y MAE
+calcular_errores <- function(modelo) {
+  pred <- predict(modelo, newdata = train)
+  mse <- mean((train$SalePrice - pred)^2)
+  mae <- mean(abs(train$SalePrice - pred))
+  return(c(MSE = mse, MAE = mae))
+}
+
+# Calcular errores para cada modelo
+erroresarbol1 <- calcular_errores(arbol1)
+erroresmodelo2 <- calcular_errores(modelo2)
+
+
+# Mostrar los resultados
+resultados <- data.frame(
+  Modelo = c("Arbol 1", "Modelo 2" ),
+  MSE = c(erroresarbol1[1], erroresmodelo2[1]),
+  MAE = c(erroresarbol1[2], erroresmodelo2[2])
+)
+
+print(resultados)
+
+# Identificar el mejor modelo (menor MSE)
+mejor_modelo <- resultados[which.min(resultados$MSE), "Modelo"]
+cat("\nEl mejor modelo según el MSE es:", mejor_modelo, "\n")
+
+```
 # 6. Dependiendo del análisis exploratorio elaborado cree una variable respuesta que le permita clasificar las casas en Económicas, Intermedias o Caras. Los límites de estas clases deben tener un fundamento en la distribución de los datos de precios, y estar bien explicados
 
+
+
+
+
+
+# 7. Elabore un árbol de clasificación utilizando la variable respuesta que creó en el punto anterior. Explique los resultados a los que llega. Muestre el modelo gráficamente. Recuerde que la nueva variable respuesta es categórica, pero se generó a partir de los precios de las casas, no incluya el precio de venta para entrenar el modelo.
 # 7. Elabore un árbol de clasificación utilizando la variable respuesta que creó en el punto anterior. Explique los resultados a los que llega. Muestre el modelo gráficamente. Recuerde que la nueva variable respuesta es categórica, pero se generó a partir de los precios de las casas, no incluya el precio de venta para entrenar el modelo.
