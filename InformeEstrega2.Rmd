@@ -268,22 +268,66 @@ test$SalePrice<-NULL
 ``` 
 
 ```{r modelo1_class}
-modelo1_clasificacion <- rpart(precio_categoria~.,data = train, method = "class")
-rpart.plot(modelo1_clasificacion)
-```
-
-```{r matriz de confusion}
-predicciones_clas<-predict(modelo1_clasificacion, newdata = train, type = "class")
-matriz_confusion<- table(train$precio_categoria, predicciones_clas)
-print(matriz_confusion)
-```
-
-Según la matriz de confusión, el modelo tiene una precision general de 81.7%, por lo que clasifica correctamente la mayoria de las viviendas, con dificulades para casificar correctamente las categorias de economicas y de lujo.
-
-```{r grafico del arbol}
 rpart.plot(modelo1_clasificacion, type = 4, extra=1)
-
 ```
 
 El árbol utiliza las varibales GrLivArea, OverallQual, BsmtFinSF1, YearBuilt, para clasificar las viviendas. Mostrando que el tamaño, calidad y antiguedad de la casa son los factores que mas influyen en el precio. Las viviendas de precio alto son las de alta calidad y gran área. Las de baja calidad y area mas pequeña las calasifica como en precio bajo. La clasificacion de Lujo tiene menor cantidad de de valores de acierto, que puede deberse a pocos datos en esta categoria a comparacion con las otras. 
+
+
+
+#8. Utilice el modelo con el conjunto de prueba y determine la eficiencia del algoritmo para
+clasificar.
+
+#9. Haga un análisis de la eficiencia del algoritmo usando una matriz de confusión para el árbol
+de clasificación. Tenga en cuenta la efectividad, donde el algoritmo se equivocó más, donde
+se equivocó menos y la importancia que tienen los errores.
+
+```{r prediccion del modelo}
+predicciones_clas<-predict(modelo1_clasificacion, newdata = test_set)
+
+
+predicciones_clas <-apply(predicciones_clas, 1, function(x) colnames(predicciones_clas)[which.max(x)])
+
+predicciones_clas<- as.factor(predicciones_clas)
+
+cfm <- confusionMatrix(predicciones_test, test_set$precio_categoria)
+print(cfm)
+```
+
+Según la matriz de confusión el modelo clasifica de buena manera las categorias economica y Lujo con precision alta, aunque hay cienta confusion entre las categorias intermedia y cara, donde se clasifica algunas casas en intermedia cuando es cara y viceversa. 
+
+Las categorias muestran alta sencibilidad y y especificidad por lo que el modelo identifica correctamente las viviendas en cada categoría, la categoria Intermedia tiene el valor mas alto de 0.9892 a comparacion con Lujo que tiene 0.8000, por que concluye que el modelo tiende a clasificar de mejor manera la categoria Intermedia que Lujo a comparacion con intermedia.
+
+Notese que como valor de Accuracy hay 88.89%, por lo que el modelo tiene buen rendimiento.
+
+#10. Entrene un modelo usando validación cruzada, prediga con él. ¿le fue mejor que al modelo anterior?
+```{r Modelo de validacion cruzada }
+
+
+control<-trainControl(method = "cv", number = 10)
+abrol_cv<-train(precio_categoria ~ .- SalePrice, data=train_set, method="rpart", trControl=control)
+predicciones_cv<-predict(abrol_cv, newdata=test_set)
+accuarcy_cv<-sum(diag(table(test_set$precio_categoria, predicciones_cv))) /nrow(test_set)
+print(paste("Precision con validacion cruzada:", accuarcy_cv))
+
+
+predicciones_test<-predict(modelo1_clasificacion, newdata=test_set, type = "class")
+accuarcy_test<-sum(diag(table(test_set$precio_categoria, predicciones_cv))) /nrow(test_set)
+print(paste("Precision del modelo original:", accuarcy_test))
+
+diferencia<-accuarcy_cv-accuarcy_test
+
+result<-sign(diferencia)
+
+print(paste("Diferencia de precision:", diferencia))
+
+```
+
+Los modelos tiene el mismmo rendimiento 
+
+#11. Haga al menos, 3 modelos más, cambiando la profundidad del árbol. ¿Cuál funcionó mejor?
+
+#12. Repita los análisis usando random forest como algoritmo de predicción, explique sus
+resultados comparando ambos algoritmos.
+
 
