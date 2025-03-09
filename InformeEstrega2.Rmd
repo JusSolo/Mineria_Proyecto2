@@ -275,12 +275,9 @@ El árbol utiliza las varibales GrLivArea, OverallQual, BsmtFinSF1, YearBuilt, p
 
 
 
-#8. Utilice el modelo con el conjunto de prueba y determine la eficiencia del algoritmo para
-clasificar.
+#8. Utilice el modelo con el conjunto de prueba y determine la eficiencia del algoritmo para clasificar.
 
-#9. Haga un análisis de la eficiencia del algoritmo usando una matriz de confusión para el árbol
-de clasificación. Tenga en cuenta la efectividad, donde el algoritmo se equivocó más, donde
-se equivocó menos y la importancia que tienen los errores.
+#9. Haga un análisis de la eficiencia del algoritmo usando una matriz de confusión para el árbol de clasificación. Tenga en cuenta la efectividad, donde el algoritmo se equivocó más, donde se equivocó menos y la importancia que tienen los errores.
 
 ```{r prediccion del modelo}
 predicciones_clas<-predict(modelo1_clasificacion, newdata = test_set)
@@ -294,11 +291,11 @@ cfm <- confusionMatrix(predicciones_test, test_set$precio_categoria)
 print(cfm)
 ```
 
-Según la matriz de confusión el modelo clasifica de buena manera las categorias economica y Lujo con precision alta, aunque hay cienta confusion entre las categorias intermedia y cara, donde se clasifica algunas casas en intermedia cuando es cara y viceversa. 
+Según la matriz de confusión el modelo clasifica de buena manera las categorias económica y Lujo con precision alta, aunque hay cierta confusión entre las categorias intermedia y cara, donde se clasifica algunas casas en intermedia cuando es cara y viceversa. 
 
-Las categorias muestran alta sencibilidad y y especificidad por lo que el modelo identifica correctamente las viviendas en cada categoría, la categoria Intermedia tiene el valor mas alto de 0.9892 a comparacion con Lujo que tiene 0.8000, por que concluye que el modelo tiende a clasificar de mejor manera la categoria Intermedia que Lujo a comparacion con intermedia.
+Las categorias muestran alta sencibilidad y y especificidad por lo que el modelo identifica correctamente las viviendas en cada categoría. POr otro lado la categoria Intermedia tiene el valor mas alto de 0.9892 a comparación con Lujo que tiene 0.8000, por que se concluye que el modelo tiende a clasificar de mejor manera la categoria Intermedia que Lujo a comparación con intermedia.
 
-Notese que como valor de Accuracy hay 88.89%, por lo que el modelo tiene buen rendimiento.
+Nótese que como valor de Accuracy hay 88.89%, por lo que el modelo tiene buen rendimiento.
 
 #10. Entrene un modelo usando validación cruzada, prediga con él. ¿le fue mejor que al modelo anterior?
 ```{r Modelo de validacion cruzada }
