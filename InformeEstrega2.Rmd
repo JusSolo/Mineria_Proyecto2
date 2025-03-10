@@ -7,6 +7,7 @@ date: "2025-01-20"
 output: pdf_document
 ---
 ```{r, librerías y base de datos,include=FALSE}
+library(randomForest)
 library(dplyr)
 library(GGally)
 library(ggplot2)
@@ -14,6 +15,8 @@ library(tidyr)
 library(caret)
 library(rpart)
 library(rpart.plot)
+library(glmnet)
+library(caret) 
 datos <- read.csv('train.csv')
 
 vars_cuantitativas <- c("SalePrice", "LotFrontage", "LotArea", "OverallQual", "OverallCond", 
@@ -44,18 +47,18 @@ datosC$GarageYrBlt[is.na(datosC$GarageYrBlt)] <- median(datosC$GarageYrBlt, na.r
 
 ```{r, creacion de nueva variable, echo=FALSE}
 # Crear una nueva variable categórica basada en los cuantiles de SalePrice
-datosC$CategoriaPrecio <- cut(
-  datosC$SalePrice,
-  breaks = quantile(datosC$SalePrice, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE),
-  labels = c("Económicas", "Intermedias", "Caras"),
-  include.lowest = TRUE
-)
+#datosC$CategoriaPrecio <- cut(
+#  datosC$SalePrice,
+#  breaks = quantile(datosC$SalePrice, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE),
+#  labels = c("Económicas", "Intermedias", "Caras"),
+#  include.lowest = TRUE
+#)
 
 # Convertir la variable en un factor
-datosC$CategoriaPrecio <- as.factor(datosC$CategoriaPrecio)
+#datosC$CategoriaPrecio <- as.factor(datosC$CategoriaPrecio)
 
 # Verificar la distribución
-table(datosC$CategoriaPrecio)
+#table(datosC$CategoriaPrecio)
 
 ```
 
@@ -175,6 +178,25 @@ Como es de esperar a mayor profundidad mayor error
 
 # 5. Compare los resultados con el modelo de regresión lineal de la hoja anterior, ¿cuál lo hizo mejor?
 
+```{r, echo=FALSE}
+# Prepara las variables independientes (X) y la dependiente (y)
+X <- model.matrix(SalePrice ~ . , data = train)[, -1]  # Matriz sin el intercepto
+y <- train$SalePrice
+
+
+set.seed(123)
+modelo_lasso <- cv.glmnet(X, y, alpha = 1)  # alpha = 1 para Lasso
+
+coeficientes <- coef(modelo_lasso, s = "lambda.min")
+variables_seleccionadas <- rownames(coeficientes)[coeficientes[, 1] != 0]
+variables_seleccionadas <- variables_seleccionadas[-1]  # Excluye el intercepto
+
+variables_seleccionadas <- variables_seleccionadas[variables_seleccionadas %in% colnames(train)]
+
+cat("Variables seleccionadas:", variables_seleccionadas, "\n")
+```
+
+
 ```{r, Comparacion del mejor modelo actual (arbol1) con el mejor modelo de la hoja anterior (modelo1) }
 
 
@@ -253,7 +275,7 @@ table(train$precio_categoria)
 
 ```{r arbol de clasificacion}
 arbol_clasificacion<- rpart(precio_categoria ~ .-SalePrice, data = train )
-summary(arbol_clasificacion)
+#summary(arbol_clasificacion)
 ```
 
 
@@ -268,26 +290,26 @@ test$SalePrice<-NULL
 ``` 
 
 ```{r modelo1_class}
-rpart.plot(modelo1_clasificacion, type = 4, extra=1)
+rpart.plot(arbol_clasificacion, type = 4, extra=1)
 ```
 
 El árbol utiliza las varibales GrLivArea, OverallQual, BsmtFinSF1, YearBuilt, para clasificar las viviendas. Mostrando que el tamaño, calidad y antiguedad de la casa son los factores que mas influyen en el precio. Las viviendas de precio alto son las de alta calidad y gran área. Las de baja calidad y area mas pequeña las calasifica como en precio bajo. La clasificacion de Lujo tiene menor cantidad de de valores de acierto, que puede deberse a pocos datos en esta categoria a comparacion con las otras. 
 
 
 
-#8. Utilice el modelo con el conjunto de prueba y determine la eficiencia del algoritmo para clasificar.
+# 8. Utilice el modelo con el conjunto de prueba y determine la eficiencia del algoritmo para clasificar.
 
-#9. Haga un análisis de la eficiencia del algoritmo usando una matriz de confusión para el árbol de clasificación. Tenga en cuenta la efectividad, donde el algoritmo se equivocó más, donde se equivocó menos y la importancia que tienen los errores.
+# 9. Haga un análisis de la eficiencia del algoritmo usando una matriz de confusión para el árbol de clasificación. Tenga en cuenta la efectividad, donde el algoritmo se equivocó más, donde se equivocó menos y la importancia que tienen los errores.
 
 ```{r prediccion del modelo}
-predicciones_clas<-predict(modelo1_clasificacion, newdata = test_set)
+predicciones_clas<-predict(arbol_clasificacion, newdata = test_set)
 
 
 predicciones_clas <-apply(predicciones_clas, 1, function(x) colnames(predicciones_clas)[which.max(x)])
 
 predicciones_clas<- as.factor(predicciones_clas)
 
-cfm <- confusionMatrix(predicciones_test, test_set$precio_categoria)
+cfm <- confusionMatrix(predicciones_clas, test_set$precio_categoria)
 print(cfm)
 ```
 
@@ -297,7 +319,7 @@ Las categorias muestran alta sencibilidad y y especificidad por lo que el modelo
 
 Nótese que como valor de Accuracy hay 88.89%, por lo que el modelo tiene buen rendimiento.
 
-#10. Entrene un modelo usando validación cruzada, prediga con él. ¿le fue mejor que al modelo anterior?
+# 10. Entrene un modelo usando validación cruzada, prediga con él. ¿le fue mejor que al modelo anterior?
 ```{r Modelo de validacion cruzada }
 
 
@@ -308,7 +330,7 @@ accuarcy_cv<-sum(diag(table(test_set$precio_categoria, predicciones_cv))) /nrow(
 print(paste("Precision con validacion cruzada:", accuarcy_cv))
 
 
-predicciones_test<-predict(modelo1_clasificacion, newdata=test_set, type = "class")
+predicciones_test<-predict(arbol_clasificacion, newdata=test_set, type = "class")
 accuarcy_test<-sum(diag(table(test_set$precio_categoria, predicciones_cv))) /nrow(test_set)
 print(paste("Precision del modelo original:", accuarcy_test))
 
@@ -322,9 +344,82 @@ print(paste("Diferencia de precision:", diferencia))
 
 Los modelos tiene el mismmo rendimiento 
 
-#11. Haga al menos, 3 modelos más, cambiando la profundidad del árbol. ¿Cuál funcionó mejor?
+# 11. Haga al menos, 3 modelos más, cambiando la profundidad del árbol. ¿Cuál funcionó mejor?
 
-#12. Repita los análisis usando random forest como algoritmo de predicción, explique sus
+```{r}
+arbol_clasificacion1 <- rpart(precio_categoria ~ ., data = train,control = rpart.control(maxdepth = 6) )
+arbol_clasificacion2 <- rpart(precio_categoria ~ ., data = train,control = rpart.control(maxdepth = 3) )
+arbol_clasificacion3 <- rpart(precio_categoria ~ ., data = train,control = rpart.control(maxdepth = 2) )
+
+rpart.plot(arbol_clasificacion1, type = 4, extra=1)
+rpart.plot(arbol_clasificacion2, type = 4, extra=1)
+rpart.plot(arbol_clasificacion3, type = 4, extra=1)
+
+
+
+
+```
+
+```{r}
+
+errores2 <- calcular_errores(arbol_clasificacion1)
+errores3 <- calcular_errores(arbol_clasificacion2)
+errores4 <- calcular_errores(arbol_clasificacion3)
+
+
+# Generar predicciones para el conjunto de prueba
+
+pred1 <- predict(arbol_clasificacion1, newdata = test_set, type = "class")
+pred2 <- predict(arbol_clasificacion2, newdata = test_set, type = "class")
+pred3 <- predict(arbol_clasificacion3, newdata = test_set, type = "class")
+
+# Crear matrices de confusión
+confusion1 <- confusionMatrix(pred1, test_set$precio_categoria)
+confusion2 <- confusionMatrix(pred2, test_set$precio_categoria)
+confusion3 <- confusionMatrix(pred3, test_set$precio_categoria)
+
+
+# Mostrar las matrices de confusión
+print("Matriz de Confusión para arbol_clasificacion1:")
+print(confusion1)
+
+print("Matriz de Confusión para arbol_clasificacion2:")
+print(confusion2)
+
+print("Matriz de Confusión para arbol_clasificacion3:")
+print(confusion3)
+
+```
+Como es de esperarce el Arbol que tienen mayor profundidad, de 6 de profundidad fue el que obtuvo mejores resultados. Sin embargo tiene una presicion de 83.76% lo que podría indicar que el modelo empieza a sobre ajustarce. Como el modelo de profundidad 3 tiene la midad de profundidad y una precicion de  0.7863% la cual es parecida con menos riesgo de sobre ajuste y con un modelo más simple. Por ello se considera al arbo de profundidad 3 como el mejor modelo para la clasificacion. 
+
+
+# 12. Repita los análisis usando random forest como algoritmo de predicción, explique sus
 resultados comparando ambos algoritmos.
 
+```{r}
+rf_model <- randomForest(precio_categoria ~ ., data = train_set, ntree = 500, importance = TRUE)
+# Suponiendo que ya has creado el modelo rf_model
+
+
+
+
+# Suponiendo que ya has creado el modelo rf_model
+plot(rf_model, main = "Error de OOB")
+# Suponiendo que ya has creado el modelo rf_model
+varImpPlot(rf_model, main = "Importancia de Variables")
+
+
+# Realiza las predicciones sobre test_set
+predictions <- predict(rf_model, newdata = test_set)
+
+# Genera la matriz de confusión comparando las predicciones con los valores reales
+confusion_matrix <- table(Predicted = predictions, Actual = test_set$precio_categoria)
+print(confusion_matrix)
+
+# Opcional: Calcula la precisión del modelo
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+print(paste("Precisión:", round(accuracy * 100, 2), "%"))
+
+
+```
 
