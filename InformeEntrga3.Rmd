@@ -198,11 +198,69 @@ En la tabla comparativa con cualquiera de las tres métricas se puede concluir q
 
 
 # 4. Haga un modelo de clasificación, use la variable categórica que hizo con el precio de las casas (barata, media y cara) como variable respuesta.
+```{r recuperacion de variable categorica}
+
+train$precio_categoria<-cut(train$SalePrice, 
+                            breaks = c(0, 129975, 214000, 400000, Inf),
+                            labels = c("Economica", "Intermedia", "Cara", "Lujo"),
+                            include.lowest = TRUE)
+
+test$precio_categoria<-cut(test$SalePrice, 
+                            breaks = c(0, 129975, 214000, 400000, Inf),
+                            labels = c("Economica", "Intermedia", "Cara", "Lujo"),
+                            include.lowest = TRUE)
+
+
+#modelo NB para clasificacion
+
+modeloClas<-naiveBayes(precio_categoria~., data=train)
+
+
+```
+
+
 
 
 # 5. Utilice los modelos con el conjunto de prueba y determine la eficiencia del algoritmo para predecir y clasificar.
+```{r}
+#prediccion del modelo
+pred_nb_clas<-predict(modeloClas, newdata=test[, !names(test) %in% c("salePrice", "PriceCateoria") ])
+                              
+
+
+```
+
 
 # 6. Haga un análisis de la eficiencia del modelo de clasificación usando una matriz de confusión. Tenga en cuenta la efectividad, donde el algoritmo se equivocó más, donde se equivocó menos y la importancia que tienen los errores.
+
+```{r}
+#evualuar modelo
+confusionMatrix(pred_nb_clas, test$precio_categoria)
+```
+
+Según la matriz de confusion, el moodelo mosto una efectividad en las categorias económicas y lujo con 109 y 9 predicciones correctas, respectivamente. Con efectviad moderada es el modelo es la categoria cara con 84 predicicones correctas. La categoria con menor efectividad es la de intermedio. 
+
+Con lo que el modelo en general cuenta con precision del 59.86%,valor de Accuracy, por lo que se puede conciderar un rendimiento moderado. Con Kapa de 0.4545 que es la concordancia entre el valor real y el valor de prediccion. 
+
+Por estadistica por clase el  modelo identifica correctamente todas las casas económicas, asi como las casas de lujo, segida de la categoria Cara que identifico en parte mayoría las casas caras y por último la categoria intermedia, que fue la que tuvo menos aciertos en clasificar las casas intermedias 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
