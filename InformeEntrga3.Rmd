@@ -6,7 +6,11 @@ author:
 date: "2025-01-20"
 output: pdf_document
 ---
-```{r, librerías y base de datos,include=FALSE}
+
+
+
+```{r, include=FALSE}
+# Cargar librerías necesarias
 library(randomForest)
 library(dplyr)
 library(GGally)
@@ -16,11 +20,13 @@ library(caret)
 library(rpart)
 library(rpart.plot)
 library(glmnet)
-library(caret) 
 library(e1071)
-library(caret)
 library(Metrics)
+
+# Cargar la base de datos
 datos <- read.csv('train.csv')
+
+# Definir variables cuantitativas
 vars_cuantitativas <- c("SalePrice", "LotFrontage", "LotArea", "OverallQual", "OverallCond", 
                         "YearBuilt", "YearRemodAdd", "MasVnrArea", "BsmtFinSF1", "BsmtFinSF2", 
                         "BsmtUnfSF", "TotalBsmtSF", "X1stFlrSF", "X2ndFlrSF", "LowQualFinSF", 
@@ -29,21 +35,19 @@ vars_cuantitativas <- c("SalePrice", "LotFrontage", "LotArea", "OverallQual", "O
                         "GarageCars", "GarageArea", "WoodDeckSF", "OpenPorchSF", "EnclosedPorch", 
                         "X3SsnPorch", "ScreenPorch", "PoolArea", "MiscVal", "MoSold", "YrSold")
 
-datosC <- datos %>%
-  select(all_of(vars_cuantitativas))
-# completar variables:
+# Imputar valores faltantes en variables específicas
+datos <- datos %>%
+  mutate(
+    LotFrontage = ifelse(is.na(LotFrontage), 0, LotFrontage),
+    MasVnrArea = ifelse(is.na(MasVnrArea), 0, MasVnrArea),
+    GarageYrBlt = ifelse(is.na(GarageYrBlt), median(GarageYrBlt, na.rm = TRUE), GarageYrBlt)
+  )
 
-datosC$LotFrontage[is.na(datosC$LotFrontage)] <- 0
-datosC$MasVnrArea[is.na(datosC$MasVnrArea)] <- 0
-datosC$GarageYrBlt[is.na(datosC$GarageYrBlt)] <- median(datosC$GarageYrBlt, na.rm = TRUE)
-# completar variables:
-
-datosC$LotFrontage[is.na(datosC$LotFrontage)] <- 0
-datosC$MasVnrArea[is.na(datosC$MasVnrArea)] <- 0
-datosC$GarageYrBlt[is.na(datosC$GarageYrBlt)] <- median(datosC$GarageYrBlt, na.rm = TRUE)
-
-
+# Seleccionar solo variables cuantitativas
+datosC <- datos[, vars_cuantitativas]
 ```
+
+
 
 
 # git: https://github.com/JusSolo/Mineria_Proyecto2.git
@@ -86,7 +90,7 @@ modelo <- naiveBayes(SalePrice ~ ., data = train)
 
 
 # 2. Analice los resultados del modelo de regresión usando bayes ingenuo. ¿Qué tan bien le fue prediciendo? Utilice las métricas correctas.
-```{r, evalucion del desempeño del modelo}
+```{r, evalucion del desempeño del modelo, echo=FALSE}
 # Predicciones para test
 predTest <- predict(modelo, newdata = test)
 predTest <- as.numeric(as.character(predTest))  # Convertir a numérico
@@ -130,13 +134,13 @@ cat("RMSLE train:", rmsle_train, "\n")
 cat("R^2 train:", r2_train, "\n")
 
 ```
-El $R^2$ es de 0.657 no esta muy cercano a 1, pero tampoco es terrible. El RMSLE es de 0.2 lo que nos indica que el modelo tiene margen de mejora.  
+El $R^2$ es de 0.6699 no esta muy cercano a 1, pero tampoco es terrible. El RMSLE es de 0.25 lo que nos indica que el modelo tiene margen de mejora.  
 
 # 3. Compare los resultados con el modelo de regresión lineal y el árbol de regresión que hizo en las entregas pasadas. ¿Cuál funcionó mejor?
 
 
 
-```{r, comparacion de modelos}
+```{r, comparacion de modelos, echo=FALSE}
 # Entrenar modelo Naïve Bayes
 library(e1071)
 library(glmnet)
@@ -213,7 +217,7 @@ test$precio_categoria<-cut(test$SalePrice,
 
 #modelo NB para clasificacion
 
-modeloClas<-naiveBayes(precio_categoria~., data=train)
+modeloClas<-naiveBayes(precio_categoria~.- SalePrice, data=train)
 
 
 ```
@@ -258,43 +262,85 @@ El modelo de clasificacion Naive Bayes no se muestra signos significativos de so
 
 #8. Haga un modelo usando validación cruzada, compare los resultados de este con los del modelo anterior. ¿Cuál funcionó mejor?
 
+
+
+
+
+
+
+```{r, eliminar Na, echo=FALSE}
+# Cargar la base de datos
+datos <- read.csv('train.csv')
+
+# Función para obtener la moda (para variables categóricas)
+get_mode <- function(x) {
+  ux <- unique(na.omit(x))
+  if (length(ux) == 0) return(NA)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+# Imputar numéricos con mediana y categóricas con moda
+datos <- datos %>%
+  mutate(
+    # Imputar numéricos
+    across(where(is.numeric), 
+           ~ ifelse(is.na(.x), median(.x, na.rm = TRUE), .x)),
+    # Imputar categóricos (factores o character)
+    across(where(~ is.factor(.x) || is.character(.x)), 
+           ~ {
+             if (any(is.na(.x))) {
+               if (is.factor(.x)) {
+                 # Para factores, añadir nivel "Missing"
+                 levels(.x) <- c(levels(.x), "Missing")
+                 replace(.x, is.na(.x), "Missing")
+               } else {
+                 replace(.x, is.na(.x), get_mode(.x))
+               }
+             } else {
+               .x
+             }
+           })
+  )
+
+# Eliminar columnas donde todos los valores son NA (por si acaso)
+datos <- datos %>% select_if(~ !all(is.na(.x)))
+
+
+# Verificar NAs restantes
+cat("NAs después de imputación:", sum(is.na(datos)))
+
+y <- datos$SalePrice
+set.seed(123)
+trainI <- createDataPartition(y, p=0.7, list=FALSE)
+train <- datos[trainI, ]
+test <- datos[-trainI, ]
+
+# Crear variable categorica (sin NAs)
+train$precio_categoria <- cut(train$SalePrice, 
+                             breaks = c(0, 129975, 214000, 400000, Inf),
+                             labels = c("Economica", "Intermedia", "Cara", "Lujo"),
+                             include.lowest = TRUE)
+test$precio_categoria <- cut(test$SalePrice, 
+                            breaks = c(0, 129975, 214000, 400000, Inf),
+                            labels = c("Economica", "Intermedia", "Cara", "Lujo"),
+                            include.lowest = TRUE)
+```
+
 ```{r validacion cruzada}
-
-control<-trainControl(method = "cv", number = 10)
-nb_cv<-train(precio_categoria ~ .- SalePrice, data=train_set, method="naive_bayes", trControl=control)
-
-
-
-#predicciones con validacion cruzada
-predicciones_cv<-predict(nb_cv, newdata=test)
-
-#precision con validacion cruzada
-
-accuarcy_cv<-sum(diag(table(test$precio_categoria, predicciones_cv))) /nrow(test)
-print(paste("Precision con validacion cruzada:", accuarcy_cv))
-
-
-#prediccion del modelo original, sin validacion
-predicciones_test<-predict(modeloClas, newdata=test)
-
-
-#precision de modelo original
-accuarcy_test<-sum(diag(table(test$precio_categoria, predicciones_test))) /nrow(test)
-print(paste("Precision del modelo original:", accuarcy_test))
-
-
-#diferenica de precision 
-diferencia<-accuarcy_cv-accuarcy_test
-
-result<-sign(diferencia)
-
-print(paste("Diferencia de precision:", diferencia))
 
 
 ```
+
+
+
+
 Ambos modelos tienen rendimiento menor que el 30% por lo que no necesariamente Naive Bayes el mas adecuado para este problema para la clasificacion. La validacion cruzada no mejoró el rendimiento. 
 
 #9. Tanto para los modelos de regresión como de clasificación, pruebe con varios valores de los hiperparámetros, use el mejor modelo del tuneo, ¿Mejoraron los modelos? Explique
+```{r}
+
+```
+
 
 #10. Compare la eficiencia del algoritmo con el resultado obtenido con el árbol de decisión (el de clasificación) y el modelo de random forest que hizo en la hoja pasada. ¿Cuál es mejor para predecir? ¿Cuál se demoró más en procesar?
 

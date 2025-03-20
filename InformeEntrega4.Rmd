@@ -1,0 +1,192 @@
+---
+title: "Informe Proyecto 2 entrega 4"
+author:
+- "Juan Luis Solórzano (carnet: 201598)"
+- "Micaela Yataz (carnet: 18960)"
+date: "2025-01-20"
+output: pdf_document
+---
+
+
+
+```{r, include=FALSE}
+# Cargar librerías necesarias
+library(randomForest)
+library(dplyr)
+library(GGally)
+library(ggplot2)
+library(tidyr)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(glmnet)
+library(e1071)
+library(Metrics)
+library(tidyverse)
+library(class)
+
+
+
+# Cargar la base de datos
+datos <- read.csv('train.csv')
+
+# Definir variables cuantitativas
+vars_cuantitativas <- c("SalePrice", "LotFrontage", "LotArea", "OverallQual", "OverallCond", 
+                        "YearBuilt", "YearRemodAdd", "MasVnrArea", "BsmtFinSF1", "BsmtFinSF2", 
+                        "BsmtUnfSF", "TotalBsmtSF", "X1stFlrSF", "X2ndFlrSF", "LowQualFinSF", 
+                        "GrLivArea", "BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", 
+                        "BedroomAbvGr", "KitchenAbvGr", "TotRmsAbvGrd", "Fireplaces", "GarageYrBlt", 
+                        "GarageCars", "GarageArea", "WoodDeckSF", "OpenPorchSF", "EnclosedPorch", 
+                        "X3SsnPorch", "ScreenPorch", "PoolArea", "MiscVal", "MoSold", "YrSold")
+
+# Imputar valores faltantes en variables específicas
+datos <- datos %>%
+  mutate(
+    LotFrontage = ifelse(is.na(LotFrontage), 0, LotFrontage),
+    MasVnrArea = ifelse(is.na(MasVnrArea), 0, MasVnrArea),
+    GarageYrBlt = ifelse(is.na(GarageYrBlt), median(GarageYrBlt, na.rm = TRUE), GarageYrBlt)
+  )
+
+# Seleccionar solo variables cuantitativas
+datosC <- datos[, vars_cuantitativas]
+```
+
+
+
+
+# git: https://github.com/JusSolo/Mineria_Proyecto2.git
+
+
+# 1. Elabore un modelo de regresión usando K nearest Neighbors (KNN), el conjunto de entrenamiento y la variable respuesta SalesPrice. Prediga con el modelo y explique los resultados a los que llega. Asegúrese que los conjuntos de entrenamiento y prueba sean los mismos de las entregas anteriores para que los modelos sean comparables.
+
+```{r, regresion usando KNN}
+y<- datos$SalePrice
+set.seed(123)
+trainI<- createDataPartition(y, p=0.7, list=FALSE)
+
+train<-datosC[trainI, ]
+test<-datosC[-trainI, ]
+
+## Modelo:
+train<-train[complete.cases(train),]
+k_vecinos <- round(sqrt(nrow(datosC)),0)
+parametros <- expand.grid(k = k_vecinos)
+
+modelo_knn1 <- train(
+  SalePrice~., 
+  data=train, 
+  method = "knn", 
+  preProcess= c("center","scale","knnImpute"),
+  tuneGrid = parametros
+)
+predModelo1 <- predict(modelo_knn1, newdata=test)
+
+
+```
+
+
+# 2. Analice los resultados del modelo de regresión usando KNN. ¿Qué tan bien le fue prediciendo? Utilice las métricas correctas.
+
+```{r}
+
+pred_test <- predict(modelo_knn1, newdata = test)
+
+metrics <- postResample(pred_test, test$SalePrice)
+print(metrics)
+
+```
+ El $R^2= 0.784$ es aceptable, El MAE es del orden de los $20,000 lo que para el precio de una casa parece aceptable. 
+
+
+# 3. Compare los resultados con el modelo de regresión lineal, el mejor modelo de árbol de regresión y de naive bayes que hizo en las entregas pasadas. ¿Cuál funcionó mejor?
+
+```{r, modelos anteriores, echo=FALSE}
+modelo_lineal <- train(
+  SalePrice ~ ., 
+  data = train, 
+  method = "lm",  # Método para regresión lineal
+  preProcess = c("center", "scale", "knnImpute")  # Preprocesamiento igual al de KNN
+)
+
+
+arbol <- rpart(SalePrice~.,data = train)
+
+
+modelo_naivbayes <- naiveBayes(SalePrice ~ ., data = train)
+
+# Predicciones en test para cada modelo
+pred_knn <- predict(modelo_knn1, newdata = test)
+pred_arbol <- predict(arbol, newdata = test)
+pred_lineal <- predict(modelo_lineal, newdata = test)
+pred_naivbayes <- as.numeric(predict(modelo_naivbayes, newdata = test))
+
+# Función para calcular métricas con caret
+calcular_metricas <- function(y_real, y_pred) {
+  resultados <- postResample(y_pred, y_real)  # Devuelve RMSE, R², MAE
+  data.frame(
+    RMSE = resultados["RMSE"],
+    MAE = resultados["MAE"],
+    R2 = resultados["Rsquared"],
+    r = cor(y_real, y_pred)  # Coeficiente de correlación
+  )
+}
+
+# Crear tabla comparativa
+resultados <- bind_rows(
+  KNN = calcular_metricas(test$SalePrice, pred_knn),
+  Lineal = calcular_metricas(test$SalePrice, pred_lineal),
+  Árbol = calcular_metricas(test$SalePrice, pred_arbol),
+  NaiveBayes = calcular_metricas(test$SalePrice, pred_naivbayes),
+  .id = "Modelo"
+)
+
+# Mostrar tabla
+print(resultados)
+
+```
+
+Podemos notar que para todas las medidas de error excepto el MAE el mejor modelo es el KNN, el segundo mejor es el modelo lineal, seguido por el Arbol y el peor es el Naïve Bayes. 
+
+# 4. Haga un modelo de clasificación, use la variable categórica que hizo con el precio de las casas (barata, media y cara) como variable respuesta.
+
+
+# 5. Utilice los modelos con el conjunto de prueba y determine la eficiencia del algoritmo para predecir y clasificar.
+
+
+# 6. Haga un análisis de la eficiencia del modelo de clasificación usando una matriz de confusión. Tenga en cuenta la efectividad, donde el algoritmo se equivocó más, donde se equivocó menos y la importancia que tienen los errores.
+
+
+# 7.  Analice el modelo. ¿Cree que pueda estar sobreajustado?
+
+# 8. Haga un modelo usando validación cruzada, compare los resultados de este con los del modelo anterior. ¿Cuál funcionó mejor?
+
+
+9. Tanto para los modelos de regresión como de clasificación, pruebe con varios valores de los hiperparámetros ¿Qué parámetros pueden tunearse en un KNN?, use el mejor modelo del tuneo, ¿Mejoraron los resultados usando el mejor modelo ahora? Explique
+
+
+10. Compare la eficiencia del algoritmo con el resultado obtenido con el árbol de decisión (el de clasificación), el modelo de random forest y el de naive bayes que hizo en las entregas pasadas. ¿Cuál es mejor para predecir? ¿Cuál se demoró más en procesar?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
