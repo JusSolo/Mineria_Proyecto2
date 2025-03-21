@@ -149,11 +149,52 @@ Podemos notar que para todas las medidas de error excepto el MAE el mejor modelo
 
 # 4. Haga un modelo de clasificación, use la variable categórica que hizo con el precio de las casas (barata, media y cara) como variable respuesta.
 
+```{r Recuperacion de varibale}
+train$precio_categoria<-cut(train$SalePrice, 
+                            breaks = c(0, 129975, 214000, 400000, Inf),
+                            labels = c("Economica", "Intermedia", "Cara", "Lujo"),
+                            include.lowest = TRUE)
+
+test$precio_categoria<-cut(test$SalePrice, 
+                            breaks = c(0, 129975, 214000, 400000, Inf),
+                            labels = c("Economica", "Intermedia", "Cara", "Lujo"),
+                            include.lowest = TRUE)
+#normalizar datos
+
+x_train<-train[, !(names(train) %in% c("SalePrice", "precio_categoria"))]
+y_train<-train$precio_categoria
+
+x_test<- test[, !(names(test) %in% c("SalePrice", "precio_categoria"))]
+y_test<-test$precio_categoria
+
+
+#modelo de casificacion 
+
+modelo_knn_class<-train(
+  x=x_train,
+  y=y_train,
+  method="knn"
+  )
+
+```
+
 
 # 5. Utilice los modelos con el conjunto de prueba y determine la eficiencia del algoritmo para predecir y clasificar.
 
+```{r prediccion}
+predic_knn_clas<-predict(modelo_knn_class, newdata = x_test)
+
+```
 
 # 6. Haga un análisis de la eficiencia del modelo de clasificación usando una matriz de confusión. Tenga en cuenta la efectividad, donde el algoritmo se equivocó más, donde se equivocó menos y la importancia que tienen los errores.
+
+```{r matriz de confusion}
+
+consfusion_m<- confusionMatrix(predic_knn_clas, y_test)
+print(consfusion_m)
+
+```
+El modelo clasificó corectamente el 73.17% de las casas, segun el Accuaracy, es moderado. Hay desbalance de clases, en especifico para la clase Lujo, nótese por la sensibilidad, ya que no identifico a ninguna casa de lujo. La clasificacion erronea de viviendas de lujo como econommicas tienen impacto significativo ya que tienen una gran diferencia en el valor de las propiedades.
 
 
 # 7.  Analice el modelo. ¿Cree que pueda estar sobreajustado?
@@ -161,10 +202,10 @@ Podemos notar que para todas las medidas de error excepto el MAE el mejor modelo
 # 8. Haga un modelo usando validación cruzada, compare los resultados de este con los del modelo anterior. ¿Cuál funcionó mejor?
 
 
-9. Tanto para los modelos de regresión como de clasificación, pruebe con varios valores de los hiperparámetros ¿Qué parámetros pueden tunearse en un KNN?, use el mejor modelo del tuneo, ¿Mejoraron los resultados usando el mejor modelo ahora? Explique
+#9. Tanto para los modelos de regresión como de clasificación, pruebe con varios valores de los hiperparámetros ¿Qué parámetros pueden tunearse en un KNN?, use el mejor modelo del tuneo, ¿Mejoraron los resultados usando el mejor modelo ahora? Explique
 
 
-10. Compare la eficiencia del algoritmo con el resultado obtenido con el árbol de decisión (el de clasificación), el modelo de random forest y el de naive bayes que hizo en las entregas pasadas. ¿Cuál es mejor para predecir? ¿Cuál se demoró más en procesar?
+#10. Compare la eficiencia del algoritmo con el resultado obtenido con el árbol de decisión (el de clasificación), el modelo de random forest y el de naive bayes que hizo en las entregas pasadas. ¿Cuál es mejor para predecir? ¿Cuál se demoró más en procesar?
 
 
 
