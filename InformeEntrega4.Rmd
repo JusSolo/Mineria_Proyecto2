@@ -151,13 +151,13 @@ Podemos notar que para todas las medidas de error excepto el MAE el mejor modelo
 
 ```{r Recuperacion de varibale}
 train$precio_categoria<-cut(train$SalePrice, 
-                            breaks = c(0, 129975, 214000, 400000, Inf),
-                            labels = c("Economica", "Intermedia", "Cara", "Lujo"),
+                            breaks = c(0, 129975, 214000,Inf),
+                            labels = c("Economica", "Intermedia", "Cara" ),
                             include.lowest = TRUE)
 
 test$precio_categoria<-cut(test$SalePrice, 
-                            breaks = c(0, 129975, 214000, 400000, Inf),
-                            labels = c("Economica", "Intermedia", "Cara", "Lujo"),
+                            breaks = c(0, 129975, 214000, Inf),
+                            labels = c("Economica", "Intermedia", "Cara"),
                             include.lowest = TRUE)
 #normalizar datos
 
@@ -194,15 +194,90 @@ consfusion_m<- confusionMatrix(predic_knn_clas, y_test)
 print(consfusion_m)
 
 ```
-El modelo clasificó corectamente el 73.17% de las casas, segun el Accuaracy, es moderado. Hay desbalance de clases, en especifico para la clase Lujo, nótese por la sensibilidad, ya que no identifico a ninguna casa de lujo. La clasificacion erronea de viviendas de lujo como econommicas tienen impacto significativo ya que tienen una gran diferencia en el valor de las propiedades.
+El modelo clasificó corectamente el 75.23% de las casas, segun el Accuaracy, es moderado. Hay desbalance de clases, en especifico para la clase Lujo, nótese por la sensibilidad, ya que no identifico a ninguna casa de lujo. La clasificacion erronea de viviendas de lujo como econommicas tienen impacto significativo ya que tienen una gran diferencia en el valor de las propiedades.
 
 
 # 7.  Analice el modelo. ¿Cree que pueda estar sobreajustado?
 
+```{r}
+# analicemos el rendimiento del modelo con los datos de entrenamiento
+predic_knn_clas_train<-predict(modelo_knn_class, newdata = x_train)
+
+consfusion_m<- confusionMatrix(predic_knn_clas_train, y_train)
+print(consfusion_m)
+
+```
+Al hacer una matriz de confucion con los datos de entrenamiento, podelmos notar que clasificó correctamente el 78.91% de las casa, muy similar al rendimiento con los datos de prueba (75.23%) . En general no parece sobre ajustado. Comparemos el rendimiento por clases:
+
+
+
+```{r, echo=FALSE}
+library(knitr)
+library(kableExtra)
+library(dplyr)
+
+# Definir los datos
+metrics <- c("Sensitivity", "Specificity", "Pos Pred Value", "Neg Pred Value", 
+             "Prevalence", "Detection Rate", "Detection Prevalence", "Balanced Accuracy")
+
+data <- data.frame(
+  Metric = metrics,
+  `Economica (Train)` = c(0.6367, 0.9674, 0.8670, 0.8888, 0.2500, 0.1592, 0.1836, 0.8021),
+  `Economica (Test)` = c(0.6239, 0.9694, 0.8718, 0.8855, 0.2500, 0.1560, 0.1789, 0.7966),
+  `Intermedia (Train)` = c(0.8755, 0.7176, 0.7576, 0.8512, 0.5020, 0.4395, 0.5801, 0.7966),
+  `Intermedia (Test)` = c(0.8539, 0.6498, 0.7110, 0.8150, 0.5023, 0.4289, 0.6032, 0.7518),
+  `Cara (Train)` = c(0.7677, 0.9390, 0.8058, 0.9246, 0.2480, 0.1904, 0.2363, 0.8533),
+  `Cara (Test)` = c(0.6759, 0.9329, 0.7684, 0.8974, 0.2477, 0.1674, 0.2179, 0.8044)
+)
+
+# Mostrar la tabla en formato LaTeX con ajuste de tamaño
+kable(data, format = "latex", caption = "Métricas de Test y Train Comparadas") %>%
+  kable_styling(latex_options = c("striped", "hold_position", "scale_down"))
+```
+
+En la tabla podemos notar que las columnas de test son similares a las de train, por lo que no pare que haya sobre ajuste.
+
 # 8. Haga un modelo usando validación cruzada, compare los resultados de este con los del modelo anterior. ¿Cuál funcionó mejor?
 
+```{r}
+
+trctrl <- trainControl(method = "repeatedcv",
+                           number = 10,
+                           repeats = 3)
+modelo_knn_class_cruss <- train(
+  x= x_train, 
+  y=y_train, 
+  method = "knn", 
+  trControl = trctrl, 
+  preProcess= c("center","scale")
+)
+
+pred_test_cruss<-predict(modelo_knn_class_cruss, newdata = x_test)
+
+consfusion_m<- confusionMatrix(pred_test_cruss, y_test)
+print(consfusion_m)
+
+
+```
+
+Parece que con validación cruzada el modelo es un poco mejor. porque clasifica muy bien las casas económicas pero un poco peor las demás classes. En general la diferencia no parece significativas. 
 
 #9. Tanto para los modelos de regresión como de clasificación, pruebe con varios valores de los hiperparámetros ¿Qué parámetros pueden tunearse en un KNN?, use el mejor modelo del tuneo, ¿Mejoraron los resultados usando el mejor modelo ahora? Explique
+```{r}
+trctrl <- trainControl(method = "repeatedcv",
+                           number = 10,
+                           repeats = 3)
+# Ajuste de k con valores específicos: Clasificacion Por si te sirve
+tune_grid <- expand.grid(k = c(3, 5, 7, 9, 11))
+modelo_knn_class <- train(
+  x = x_train,
+  y = y_train,
+  method = "knn",
+  trControl = trctrl,
+  tuneGrid = tune_grid
+)
+
+```
 
 
 #10. Compare la eficiencia del algoritmo con el resultado obtenido con el árbol de decisión (el de clasificación), el modelo de random forest y el de naive bayes que hizo en las entregas pasadas. ¿Cuál es mejor para predecir? ¿Cuál se demoró más en procesar?
