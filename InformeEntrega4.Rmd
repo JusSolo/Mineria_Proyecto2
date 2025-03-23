@@ -277,13 +277,111 @@ modelo_knn_class <- train(
   tuneGrid = tune_grid
 )
 
+#analis
+resultados_knn_class <- modelo_knn_class$results
+mejor_k <- modelo_knn_class$bestTune$k
+
+print(resultados_knn_class)
+
+# Predicciones con el mejor modelo KNN en el conjunto de prueba
+predicciones_knn_class_mejor <- predict(modelo_knn_class, newdata = x_test)
+
+
+
 ```
+
+Nótese que el mejor rendimiento de K lo obtuvo k =9 con presicion de 0.734 y con coeficiente Kappa 0.556. Veamos como queda la matiz de confusión con el mejor valor de K.
+
+
+```{r}
+# Matriz de confusión y métricas de rendimiento
+matriz_confusion_knn_mejor <- confusionMatrix(predicciones_knn_class_mejor, y_test)
+
+print(matriz_confusion_knn_mejor)
+```
+
+
+El modelo muestra que tiene un rendiemiento del 74% y con coeficiente kappa de 0.5791 lo que se puede interpretar como una concordancia moderada. 
+
+Por parte del informe de sencibilidad, el modelo es bueno identificando las casas clasificadas como intermedio, que por el contrario para las casas económicas que tiene cierta dificultad para clasificarlas.
 
 
 #10. Compare la eficiencia del algoritmo con el resultado obtenido con el árbol de decisión (el de clasificación), el modelo de random forest y el de naive bayes que hizo en las entregas pasadas. ¿Cuál es mejor para predecir? ¿Cuál se demoró más en procesar?
 
 
+```{r}
+# Matriz de confusión para KNN
+matriz_confusion_knn_mejor <- confusionMatrix(predicciones_knn_class_mejor, y_test)
+print("Matriz de confusión KNN:")
+print(matriz_confusion_knn_mejor)
 
+# Matriz de confusión para Random Forest
+print("Matriz de confusión Random Forest:")
+print(confusionMatrix(predictions, test_set$precio_categoria))
+
+# Matriz de confusión para Naive Bayes
+
+
+train$precio_categoria<-cut(train$SalePrice, 
+                            breaks = c(0, 129975, 214000, 400000, Inf),
+                            labels = c("Economica", "Intermedia", "Cara", "Lujo"),
+                            include.lowest = TRUE)
+
+test$precio_categoria<-cut(test$SalePrice, 
+                            breaks = c(0, 129975, 214000, 400000, Inf),
+                            labels = c("Economica", "Intermedia", "Cara", "Lujo"),
+                            include.lowest = TRUE)
+
+
+#modelo NB para clasificacion
+
+modeloClas<-naiveBayes(precio_categoria~.- SalePrice, data=train)
+
+pred_nb_clas<-predict(modeloClas, newdata=test[, !names(test) %in% c("salePrice", "PriceCateoria") ])
+x<-confusionMatrix(pred_nb_clas, test$precio_categoria)
+
+print("Matriz de confusión Naive Bayes:")
+print(x)
+
+
+
+# Matriz de confusión para Árbol de Decisión de Clasificación
+
+rf_model <- randomForest(precio_categoria ~ ., data = train_set, ntree = 500, importance = TRUE)
+
+predictions <- predict(rf_model, newdata = test_set)
+
+# Genera la matriz de confusión comparando las predicciones con los valores reales
+
+matriz_confusion_arbol <- confusionMatrix(predictions, test_set$precio_categoria)
+print("Matriz de confusión Árbol de Decisión de Clasificación:")
+print(matriz_confusion_arbol)
+
+```
+
+```{r}
+# Datos de los modelos
+modelos <- c("KNN", "Random Forest", "Naive Bayes", "Árbol de Decisión")
+precision <- c(0.75, 0.9707, 0.4771, 0.9707 )
+kappa <- c(0.5874, 0.9562, 0.3121, 0.9562 )
+sensibilidad <- c(0.7241, 0.8500, 0.4523, 0.85)
+especificidad <- c(0.8533, 0.9902, 0.8293, 0.9902)
+
+
+tabla_comparativa <- data.frame(
+  Modelo = modelos,
+  Precision = precision,
+  Kappa = kappa,
+  Sensibilidad = sensibilidad,
+  Especificidad = especificidad
+)
+
+
+print(tabla_comparativa)
+```
+
+
+Random forest es el mejor, por su precision al 97%, el modelo KNN puede ser usado pero puede mejorar, pero Naive Bayes no se recomienda.
 
 
 
