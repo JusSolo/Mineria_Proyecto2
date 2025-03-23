@@ -7,7 +7,7 @@ date: "2025-01-20"
 output: pdf_document
 ---
 
-
+https://github.com/JusSolo/Mineria_Proyecto2.git 
 
 
 ```{r, include=FALSE}
