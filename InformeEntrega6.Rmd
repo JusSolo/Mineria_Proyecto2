@@ -1,0 +1,188 @@
+---
+title: "Entrega 6"
+author: "Juan Luis Solórzano"
+date: "2025-04-24"
+output:
+  pdf_document: default
+  pdf: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+https://github.com/JusSolo/Mineria_Proyecto2.git 
+
+
+```{r, include=FALSE}
+# Cargar librerías necesarias
+library(randomForest)
+library(dplyr)
+library(GGally)
+library(ggplot2)
+library(tidyr)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(glmnet)
+library(e1071)
+library(Metrics)
+library(tidyverse)
+library(class)
+library(corrplot)
+library(MLmetrics)
+library(kernlab)
+
+
+# Cargar la base de datos
+datos <- read.csv('train.csv')
+
+# Definir variables cuantitativas
+vars_cuantitativas <- c("SalePrice", "LotFrontage", "LotArea", "OverallQual", "OverallCond", 
+                        "YearBuilt", "YearRemodAdd", "MasVnrArea", "BsmtFinSF1", "BsmtFinSF2", 
+                        "BsmtUnfSF", "TotalBsmtSF", "X1stFlrSF", "X2ndFlrSF", "LowQualFinSF", 
+                        "GrLivArea", "BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", 
+                        "BedroomAbvGr", "KitchenAbvGr", "TotRmsAbvGrd", "Fireplaces", "GarageYrBlt", 
+                        "GarageCars", "GarageArea", "WoodDeckSF", "OpenPorchSF", "EnclosedPorch", 
+                        "X3SsnPorch", "ScreenPorch", "PoolArea", "MiscVal", "MoSold", "YrSold")
+
+# Imputar valores faltantes en variables específicas
+datos <- datos %>%
+  mutate(
+    LotFrontage = ifelse(is.na(LotFrontage), 0, LotFrontage),
+    MasVnrArea = ifelse(is.na(MasVnrArea), 0, MasVnrArea),
+    GarageYrBlt = ifelse(is.na(GarageYrBlt), median(GarageYrBlt, na.rm = TRUE), GarageYrBlt)
+  )
+
+# Seleccionar solo variables cuantitativas
+datosC <- datos[, vars_cuantitativas]
+```
+
+
+
+
+
+## 1. Exploración de los datos
+
+```{r carga-datos, include=FALSE}
+# Asumimos que 'datosC' ya está en el entorno y contiene las variables predictoras y SalePrice
+# Recreamos partición de Train/Test igual que en el informe
+set.seed(123)
+y <- datosC$SalePrice
+trainI <- createDataPartition(y, p = 0.7, list = FALSE)
+train <- datosC[trainI, ]
+test  <- datosC[-trainI, ]
+
+# Creamos la variable respuesta categórica
+breaks <- c(0, 129975, 214000, Inf)
+labels <- c("Economica","Intermedia","Cara")
+train$precio_categoria <- cut(train$SalePrice, breaks = breaks, labels = labels, include.lowest = TRUE)
+test$precio_categoria  <- cut(test$SalePrice,  breaks = breaks, labels = labels, include.lowest = TRUE)
+
+# Exploración básica
+table(train$precio_categoria)
+prop.table(table(train$precio_categoria))
+summary(train)
+```
+
+**Observaciones:**
+- La variable respuesta `precio_categoria` está balanceada en torno a 25–50% por clase.
+- Existen variables numéricas que requieren centrado y escalado, y posibles valores faltantes.
+
+## 2. Preparación de los datos
+
+Para SVM es crucial que las variables numéricas estén normalizadas y no existan NA. Además, convertiremos factores a dummies.
+
+```{r preprocesamiento}
+# 1) Eliminación de predictores de varianza casi cero
+nzv <- nearZeroVar(train, saveMetrics = TRUE)
+train <- train[, !nzv$zeroVar]
+test  <- test[, colnames(test) %in% colnames(train)]
+
+# 2) Imputación de valores faltantes + centrado y escalado
+pp <- preProcess(train %>% select(-SalePrice, -precio_categoria),
+                 method = c("center","scale","knnImpute"))
+train_pp <- predict(pp, train)
+test_pp  <- predict(pp, test)
+
+# 3) Codificación de factores en dummies para predictores categóricos
+dummies <- dummyVars(~ ., data = train_pp %>% select(-SalePrice, -precio_categoria))
+train_x <- predict(dummies, newdata = train_pp)
+test_x  <- predict(dummies, newdata = test_pp)
+
+# Preparamos data para caret
+x_train <- as.data.frame(train_x)
+y_train <- train_pp$precio_categoria
+x_test  <- as.data.frame(test_x)
+y_test  <- test_pp$precio_categoria
+```
+
+## 3. Definición de control de entrenamiento
+
+```{r control}
+ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 3,
+                     classProbs = TRUE, summaryFunction = multiClassSummary)
+```
+
+## 4. Modelos SVM
+
+### 4.1 SVM Lineal
+
+```{r svm-linear}
+grid_lin <- expand.grid(C = c(0.1, 1, 10))
+svm_lin <- train(x_train, y_train, method = "svmLinear",
+                 trControl = ctrl, tuneGrid = grid_lin)
+svm_lin
+```
+
+### 4.2 SVM Radial (RBF)
+
+```{r svm-radial}
+grid_rad <- expand.grid(sigma = c(0.001, 0.01, 0.1), C = c(0.1, 1, 10))
+svm_rad <- train(x_train, y_train, method = "svmRadial",
+                 trControl = ctrl, tuneGrid = grid_rad)
+svm_rad
+```
+
+### 4.3 SVM Polinomial
+
+```{r svm-poly}
+grid_poly <- expand.grid(degree = c(2, 3, 4), scale = c(0.001, 0.01), C = c(0.1, 1, 10))
+svm_poly <- train(x_train, y_train, method = "svmPoly",
+                  trControl = ctrl, tuneGrid = grid_poly)
+svm_poly
+```
+
+
+
+## 5. Predicción y matrices de confusión
+
+```{r prediccion-confusion}
+# Mejor modelo según Accuracy (ejemplo: svm_rad)
+best <- svm_rad
+pred_test <- predict(best, x_test)
+confusionMatrix(pred_test, y_test)
+```
+
+```{r confusion-todos}
+# Confusion matrices para cada modelo
+a_list <- list(
+  Linear = svm_lin,
+  Radial = svm_rad,
+  Poly   = svm_poly
+)
+for(name in names(a_list)){
+  cat("\nModelo:", name, "\n")
+  print(confusionMatrix(predict(a_list[[name]], x_test), y_test))
+}
+```
+
+
+
+
+
+
+
+
+
+

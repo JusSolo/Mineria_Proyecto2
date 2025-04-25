@@ -1,10 +1,11 @@
 ---
 title: "Informe Proyecto 2 entrega 5"
 author:
-- "Juan Luis Solórzano (carnet: 201598)"
-- "Micaela Yataz (carnet: 18960)"
+- 'Juan Luis Solórzano (carnet: 201598)'
+- 'Micaela Yataz (carnet: 18960)'
 date: "2025-01-20"
-output: pdf_document
+output:
+  pdf_document: default
 ---
 
 https://github.com/JusSolo/Mineria_Proyecto2.git 
@@ -25,7 +26,7 @@ library(e1071)
 library(Metrics)
 library(tidyverse)
 library(class)
-
+library(profvis)
 
 
 # Cargar la base de datos
@@ -52,7 +53,6 @@ datos <- datos %>%
 datosC <- datos[, vars_cuantitativas]
 ```
 
-# git: https://github.com/JusSolo/Mineria_Proyecto2.git
 
 
 
@@ -102,15 +102,15 @@ datosC <- datos[, vars_cuantitativas]
 
 # git: https://github.com/JusSolo/Mineria_Proyecto2.git
 
-#1. Cree una variable dicotómica por cada una de las categorías de la variable respuesta categórica que creó en hojas anteriores. Debería tener 3 variables dicotómicas (valores 0 y 1) una que diga si la vivienda es cara o no, media o no, económica o no.
+## 1. Cree una variable dicotómica por cada una de las categorías de la variable respuesta categórica que creó en hojas anteriores. Debería tener 3 variables dicotómicas (valores 0 y 1) una que diga si la vivienda es cara o no, media o no, económica o no.
 
 ```{r, recuperacion de el training y test }
-y<- datos$SalePrice
+y <- datos$SalePrice
 set.seed(123)
 trainI<- createDataPartition(y, p=0.7, list=FALSE)
 
-train<-datos[trainI, ]
-test<-datos[-trainI, ]
+train <- datos[trainI, ]
+test <- datos[-trainI, ]
 
 ```
 
@@ -143,7 +143,7 @@ head(test[,c("precio_categoria", "casa_cara", "casa_intermedia", "casa_economica
 ```
 
 
-#2. Use los mismos conjuntos de entrenamiento y prueba que utilizó en las hojas anteriores.
+## 2. Use los mismos conjuntos de entrenamiento y prueba que utilizó en las hojas anteriores.
 ```{r}
 
 x_train<-train[, !(names(train) %in% c("SalePrice", "precio_categoria"))]
@@ -153,7 +153,7 @@ x_test<- test[, !(names(test) %in% c("SalePrice", "precio_categoria"))]
 y_test<-test$precio_categoria
 ```
 
-#3. Elabore un modelo de regresión logística para conocer si una vivienda es cara o no, utilizando el conjunto de entrenamiento y explique los resultados a los que llega. El experimento debe ser reproducible por lo que debe fijar que los conjuntos de entrenamiento y prueba sean los mismos siempre que se ejecute el código. Use validación cruzada.
+## 3. Elabore un modelo de regresión logística para conocer si una vivienda es cara o no, utilizando el conjunto de entrenamiento y explique los resultados a los que llega. El experimento debe ser reproducible por lo que debe fijar que los conjuntos de entrenamiento y prueba sean los mismos siempre que se ejecute el código. Use validación cruzada.
 
 
 ```{r}
@@ -169,20 +169,23 @@ summary(modelo_logistico)
 ```
 Los coeficientes de las varibales son muy grandes lo que puede haber multicolinealidad.  El AIC de este modelo es 1151.3
 ```{r}
-control<-trainControl(method = "cv", number = 5)
+control <- trainControl(method = "cv", number = 10)
 
-modelo_cv<- train(as.factor(casa_cara) ~.,
-                  data = modelo, 
-                  method ="glm", 
+modelo_clean <- modelo[complete.cases(modelo), ]
+
+modelo_cv <- train(as.factor(casa_cara) ~ .,
+                  data = modelo_clean, 
+                  method = "glm", 
                   family = binomial(),
-                  trContol=control)
+                  trControl = control,
+                  metric = "Accuracy")
                   
 print(modelo_cv)
 ```
 Hay problema de multicolinealidad entre las variables predictorias.
 
 
-#4. Analice el modelo. Determine si hay multicolinealidad en las variables, y cuáles son las que aportan al modelo, por su valor de significación. Haga un análisis de correlación de las variables del modelo y especifique si el modelo se adapta bien a los datos.
+## 4. Analice el modelo. Determine si hay multicolinealidad en las variables, y cuáles son las que aportan al modelo, por su valor de significación. Haga un análisis de correlación de las variables del modelo y especifique si el modelo se adapta bien a los datos.
 
 ```{r correlacion y multicolinealidad}
 correl<-cor(x_vars, use = "complete.obs")
@@ -190,7 +193,7 @@ corrplot(correl, method = "color", tl.cex = 0.6)
 ```
 Las variables con correlacion fuerte son SalePrice, OveralQual y GrLivArea son posiblemente los predictores mas importantes del precio de las casas. Pero por la multicolinealidad, sera necesario seleccionar una variable.
 
-#5. Utilice el modelo con el conjunto de prueba y determine la eficiencia del algoritmo para clasificar.
+## 5. Utilice el modelo con el conjunto de prueba y determine la eficiencia del algoritmo para clasificar.
 ```{r}
 
 x_test<-test[,vars_cuantitativas]
@@ -201,7 +204,7 @@ confusionMatrix(factor(prediccion), factor(test$casa_cara), positive="1")
 
 El modelo aunque parece que tiene buen rendimiento predictivo, es importante ver la multicolinealidad para obtener otro modelo mas estable.
 
-#6. Explique si hay sobreajuste (overfitting) o no (recuerde usar para esto los errores del conjunto de prueba y de entrenamiento). Muestre las curvas de aprendizaje usando los errores de los conjuntos de entrenamiento y prueba
+## 6. Explique si hay sobreajuste (overfitting) o no (recuerde usar para esto los errores del conjunto de prueba y de entrenamiento). Muestre las curvas de aprendizaje usando los errores de los conjuntos de entrenamiento y prueba
 
 
 ```{r}
@@ -233,5 +236,156 @@ legend("topright", legend = c("Entrenamiento", "Prueba"),
 
 ```
 Segun la grafica el modelo tienen muy poco error en el conjunto de entrenamiento y prueba, por lo que se ajusta bien.
+
+
+
+
+
+
+
+
+## 7. Haga un tuneo del modelo para determinar los mejores parámetros, recuerde que los modelos de regresión logística se pueden regularizar como los de regresión lineal.
+
+```{r}
+
+
+
+
+y_train <- train$casa_cara 
+x_train <- train[, vars_cuantitativas]  
+
+
+
+# Paso 2: grid de búsqueda
+grid <- expand.grid(
+  alpha = seq(0, 1, length = 5),   # de Ridge (0) a Lasso (1)
+  lambda = 10^seq(-4, 1, length = 20)  # penalización suave a fuerte
+)
+
+# Paso 3: control de entrenamiento
+control <- trainControl(method = "cv", number = 5)
+
+# Paso 4: entrenamiento con caret
+set.seed(123)
+modelo_tuneado <- train(
+  x = as.matrix(x_train),
+  y = as.factor(y_train),  # debe ser factor
+  method = "glmnet",
+  trControl = control,
+  tuneGrid = grid,
+  family = "binomial"
+)
+
+# Resultados
+print(modelo_tuneado)
+plot(modelo_tuneado)
+
+
+```
+
+
+
+## 8. Haga un análisis de la eficiencia del algoritmo usando una matriz de confusión. Tenga en cuenta la efectividad, donde el algoritmo se equivocó más, donde se equivocó menos y la importancia que tienen los errores, el tiempo y la memoria consumida. Para esto último puede usar “profvis” si trabaja con R y “cProfile” en Python.
+
+
+
+```{r}
+# 1. Preparar datos de test
+y_test <- test$casa_cara
+x_test <- test[, vars_cuantitativas]
+
+# Asegurar mismos niveles que en entrenamiento (usando niveles del modelo)
+y_test <- factor(y_test, levels = levels(modelo_tuneado$trainingData$.outcome))
+
+# 2. Predecir en test
+predicciones <- predict(modelo_tuneado, 
+                        newdata = as.matrix(x_test),
+                        type = "raw")
+
+# 3. Matriz de confusión (especificar clase positiva como "1")
+confusionMatrix(data = predicciones, 
+                reference = y_test,
+                positive = "1") # <- ¡Clase positiva es "1", no "TRUE"!
+```
+
+Podemos notar que el modelo es muy bueno, no clasifica ninguna cara como no cara y dentro las caras solo clasifica 3 como no caras. 
+
+## 9. Determine cual de todos los modelos es mejor, puede usar AIC y BIC para esto, además de los parámetros de la matriz de confusión y los del profiler.
+
+
+```{r}
+
+#
+```
+
+Podemos notar que comparado con en primer modelo en modelo tuneado tiene un mejor desempeño, con un acurency del 0.9931 vs uno del 0.9564        
+
+## 10. Haga un modelo de regresión logística para la variable categórica para el precio de las casas (categorías: barata, media y cara). Asegúrese de tunearlo para obtener el mejor modelo posible.
+
+
+```{r}
+# Variables predictoras y respuesta
+x_train <- train[, vars_cuantitativas]
+y_train <- train$precio_categoria  # factor con 3 niveles
+
+# Confirmar niveles
+levels(y_train)
+# Esperado: "casa_economica" "casa_intermedia" "casa_cara"
+
+
+# Grid para tuning
+grid <- expand.grid(
+  alpha = seq(0, 1, length.out = 5),        # Ridge (0) a Lasso (1)
+  lambda = 10^seq(-4, 1, length.out = 20)   # Penalización suave a fuerte
+  
+)
+
+set.seed(123)
+modelo_multiclase <- train(
+  x = as.matrix(x_train),
+  y = y_train,  # Ya es factor con 3 clases
+  method = "glmnet",
+  family = "multinomial",  # <--- necesario para multiclase
+  trControl = control,
+  tuneGrid = grid
+)
+
+# Preparar datos de prueba
+x_test <- test[, vars_cuantitativas]
+y_test <- test$precio_categoria
+y_test <- factor(y_test, levels = levels(modelo_multiclase$trainingData$.outcome))
+
+# Predecir
+pred_multiclase <- predict(modelo_multiclase, newdata = as.matrix(x_test))
+
+# Evaluar con matriz de confusión
+confusionMatrix(pred_multiclase, y_test)
+
+
+```
+
+
+
+## 11. Compare la eficiencia del modelo anterior con los de clasificación de las entregas anteriores ¿Cuál se demoró más en procesar?¿Cuál se equivocó más?¿Cuál se equivocó menos?¿por qué?
+
+### Arbol
+![Arbol](/Users/juanluis/Documents/educacion/U/semestres/semestre_10/Mineria/Proyectos/carpeta sin título/etrega 1/Imagenes/Arbol.png)
+### Naive Bayes
+![Naive Bayes](/Users/juanluis/Documents/educacion/U/semestres/semestre_10/Mineria/Proyectos/carpeta sin título/etrega 1/Imagenes/Naive_bayes.png)
+### KNN
+![KNN](/Users/juanluis/Documents/educacion/U/semestres/semestre_10/Mineria/Proyectos/carpeta sin título/etrega 1/Imagenes/KNN.png)
+
+
+
+
+
+El mejor de los modelos es: La regresión lógistica. 
+
+
+
+
+
+
+
 
 
