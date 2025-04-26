@@ -177,6 +177,45 @@ for(name in names(a_list)){
 }
 ```
 
+EL rendimiento de los modelos en general SVM en el conjunto de prueba indica que el modelo linea alcanzó un accuaracy del 83%, el modelo radial con una mejora de 83.94% y el modelo polinomio un acuaracy de 83.26%. Los intervalos de confianza del 95% para la accuaracy sugeren una variabilidad razonabla en las estimaciones.
+
+Según las metricas por clase, observamos que el modelo radial tiente una sensibilidad ligeramente mejor para la clase cara en comparacion con los modelos, lineal y poliómico. Para la clase intermedia los tres modelos muestran una sensibilidad similares alta. La especificidad es generalmente alta para clase económica  y cara pra los tres modelos, teniendo buena capaciad para identificar de manera correctamente las casas que no están en esta categoría.
+```{r}
+library(e1071) 
+library(Metrics)
+
+tamaños <- seq(0.1, 1, by = 0.1)
+errores_train_lin <- c()
+errores_test_lin <- c()
+
+for (t in tamaños) {
+ 
+  idx <- sample(1:nrow(x_train), size = floor(t * nrow(x_train)))
+  sub_x_train <- x_train[idx, ]
+  sub_y_train <- y_train[idx]
+
+  # Entrenar un modelo SVM lineal con el subconjunto
+  sub_svm_lin <- svm(sub_x_train, sub_y_train, kernel = "linear")
+
+  # Predecir en el subconjunto de entrenamiento y en el conjunto de prueba completo
+  pred_train_lin <- predict(sub_svm_lin, newdata = sub_x_train)
+  pred_test_lin <- predict(svm_lin, newdata = x_test) # Usamos el modelo lineal completo entrenado previamente
+
+  # Calcular el error de clasificación
+  errores_train_lin <- c(errores_train_lin, mean(pred_train_lin != sub_y_train))
+  errores_test_lin <- c(errores_test_lin, mean(pred_test_lin != y_test))
+}
+
+# Graficar curvas de aprendizaje para el modelo lineal
+plot(tamaños, errores_train_lin, type = "o", col = "blue", ylim = c(0, 1),
+     ylab = "Error", xlab = "Proporción del conjunto de entrenamiento",
+     main = "Curvas de aprendizaje (SVM Lineal)")
+lines(tamaños, errores_test_lin, type = "o", col = "red")
+legend("topright", legend = c("Entrenamiento", "Prueba"),
+       col = c("blue", "red"), lty = 1)
+
+```
+Según la gráfica anterior, la curva de error de entrenamiento muestra un error bajo que tiende a disminuir ligeramente a medidad que se utiliza una mayor cantidad de datos para el entrenamiento, por lo que el modelo es capaz de aprender de los patrones. por el lado de la curva de prueba se mantiene consistente mas alta, sugiendo un pequeño sobreajuste.
 
 
 
