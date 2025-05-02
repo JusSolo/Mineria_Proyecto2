@@ -72,14 +72,7 @@ test$precio_categoria<-cut(test$SalePrice,
                             labels = c("Economica", "Intermedia", "Cara"),
                             include.lowest = TRUE)
 
-x_train<-train[, !(names(train) %in% c("SalePrice", "precio_categoria"))]
-yC_train<-train$precio_categoria
-yR_train<-train$SalePrice
 
-
-x_test<- test[, !(names(test) %in% c("SalePrice", "precio_categoria"))]
-yC_test<-test$precio_categoria
-yR_test<-test$SalePrice
 
 
 
@@ -89,12 +82,12 @@ yR_test<-test$SalePrice
 
 
 # ---------------------------------------------------------------
-# PASO 2: Definir y entrenar modelos de REGRESIÓN
+# Modelos de REGRESIÓN
 # ---------------------------------------------------------------
 
 # 1. Regresión Lineal (Entregas 1 y 3)
 Rlineal <- train(
-  SalePrice ~ .,
+  SalePrice ~ . -precio_categoria,
   data = train,
   method = "glmnet",
   tuneGrid = expand.grid(alpha = 1, lambda = 0.001),  # Mejor ajuste de entregas anteriores
@@ -103,21 +96,21 @@ Rlineal <- train(
 
 # 2. Árbol de Regresión (Entrega 2)
 Rarbol <- rpart(
-  SalePrice ~ .,
+  SalePrice ~ .-precio_categoria,
   data = train,
   control = rpart.control(maxdepth = 5, cp = 0.01)  # Parámetros óptimos
 )
 
 # 3. Naive Bayes para Regresión (Entrega 3)
 RnaiveBayes <- naiveBayes(
-  SalePrice ~ .,
+  SalePrice ~ .-precio_categoria,
   data = train
 )
 
 # 4. KNN para Regresión (Entrega 4)
 set.seed(123)
 RKNN <- train(
-  SalePrice ~ .,
+  SalePrice ~ .-precio_categoria,
   data = train,
   method = "knn",
   tuneGrid = expand.grid(k = 9),  # Mejor k según entrega 4
@@ -126,18 +119,18 @@ RKNN <- train(
 
 # 5. Regresión Logística (Entregas 5-6) - Ajustado para regresión
 RLogistic <- glm(
-  SalePrice ~ .,
+  SalePrice ~ .-precio_categoria,
   data = train,
   family = gaussian()
 )
 
 # ---------------------------------------------------------------
-# PASO 3: Definir y entrenar modelos de CLASIFICACIÓN
+# Modelos de CLASIFICACIÓN
 # ---------------------------------------------------------------
 
 # 1. Regresión Logística para Clasificación (Entrega 5)
 CLogistic <- train(
-  precio_categoria ~ .,
+  precio_categoria ~ .-SalePrice,
   data = train,
   method = "multinom",
   trControl = trainControl(method = "cv", number = 5)
@@ -145,21 +138,21 @@ CLogistic <- train(
 
 # 2. Árbol de Clasificación (Entrega 2)
 Carbol <- rpart(
-  precio_categoria ~ .,
+  precio_categoria ~ .-SalePrice,
   data = train,
   control = rpart.control(maxdepth = 3, cp = 0.01)  # Parámetros óptimos
 )
 
 # 3. Naive Bayes para Clasificación (Entrega 3)
 CnaiveBayes <- naiveBayes(
-  precio_categoria ~ .,
+  precio_categoria ~ .-SalePrice,
   data = train
 )
 
 # 4. KNN para Clasificación (Entrega 4)
 set.seed(123)
 CKNN <- train(
-  precio_categoria ~ .,
+  precio_categoria ~ .-SalePrice,
   data = train,
   method = "knn",
   tuneGrid = expand.grid(k = 9),  # Mejor k según entrega 4
@@ -169,20 +162,16 @@ CKNN <- train(
 # 5. Random Forest (Entregas 2 y 7) - Mejor modelo según entregas
 set.seed(123)
 Crf <- train(
-  precio_categoria ~ .,
+  precio_categoria ~ .-SalePrice,
   data = train,
   method = "rf",
   ntree = 500,
   importance = TRUE
 )
 
-# ---------------------------------------------------------------
-# PASO 4: Guardar modelos (opcional)
-# ---------------------------------------------------------------
-save(Rlineal, Rarbol, RnaiveBayes, RKNN, RLogistic,
-     CLogistic, Carbol, CnaiveBayes, CKNN, Crf,
-     file = "modelos_proyecto.RData")
+
 ```
+
 
 
 
@@ -199,36 +188,36 @@ A lo largo del semestre hemos usado diferentes modelos de aprendizaje supervisad
 
 ```{r, K svm con kernel lineal, include=FALSE}
 # Modelo SVM con kernel lineal
-Cla_svm1 <- svm(yC_train ~ ., data = x_train, kernel = "linear", scale = TRUE)
+Cla_svm1 <- svm(precio_categoria ~ .-SalePrice, data = train, kernel = "linear", scale = TRUE)
 
 # Predicciones en el conjunto de prueba
-pred_svm_model1 <- predict(Cla_svm1, newdata = x_test)
+pred_svm_model1 <- predict(Cla_svm1, newdata = test)
 
 # Matriz de confusión
-m1 <- confusionMatrix(pred_svm_model1, yC_test)
+m1 <- confusionMatrix(pred_svm_model1, test$precio_categoria)
 ```
 
 ```{r, K modelo radial, include=FALSE}
 # Modelo SVM con kernel radial
-Cla_svm2 <- svm(yC_train ~ ., data = x_train, kernel = "radial", scale = TRUE)
+Cla_svm2 <- svm(precio_categoria ~ .-SalePrice, data = train, kernel = "radial", scale = TRUE)
 
 # Predicciones en el conjunto de prueba
-pred_svm_model2 <- predict(Cla_svm2, newdata = x_test)
+pred_svm_model2 <- predict(Cla_svm2, newdata = test)
 
 # Matriz de confusión
-m2 <- confusionMatrix(pred_svm_model2, yC_test)
+m2 <- confusionMatrix(pred_svm_model2, test$precio_categoria)
 
 ```
 
 ```{r, Kmodelo polinomial, include=FALSE}
 # Modelo SVM con kernel polinomial
-Cla_svm3 <- svm(yC_train ~ ., data = x_train, kernel = "polynomial", degree = 5, scale = TRUE)
+Cla_svm3 <- svm(precio_categoria ~ .-SalePrice, data = train, kernel = "polynomial", degree = 5, scale = TRUE)
 
 # Predicciones en el conjunto de prueba
-pred_svm_model3 <- predict(Cla_svm3, newdata = x_test)
+pred_svm_model3 <- predict(Cla_svm3, newdata = test)
 
 # Matriz de confusión
-m3 <- confusionMatrix(pred_svm_model3, yC_test)
+m3 <- confusionMatrix(pred_svm_model3, test$precio_categoria)
 
 ```
 
@@ -326,14 +315,14 @@ kable(metrics, digits = 3, caption = "Comparación de métricas macro‑promedia
 
 ```{r, echo=FALSE, KmetricasTrain}
 # Predicciones sobre entrenamiento
-pred_train1 <- predict(Cla_svm1, newdata = x_train)
-pred_train2 <- predict(Cla_svm2, newdata = x_train)
-pred_train3 <- predict(Cla_svm3, newdata = x_train)
+pred_train1 <- predict(Cla_svm1, newdata = train)
+pred_train2 <- predict(Cla_svm2, newdata = train)
+pred_train3 <- predict(Cla_svm3, newdata = train)
 
 # Métricas de evaluación en train
-m_train1 <- confusionMatrix(pred_train1, yC_train)
-m_train2 <- confusionMatrix(pred_train2, yC_train)
-m_train3 <- confusionMatrix(pred_train3, yC_train)
+m_train1 <- confusionMatrix(pred_train1, train$precio_categoria)
+m_train2 <- confusionMatrix(pred_train2, train$precio_categoria)
+m_train3 <- confusionMatrix(pred_train3, train$precio_categoria)
 
 
 
@@ -384,15 +373,14 @@ grid <- expand.grid(
 
 # 3) Ejecuto train() sobre x_train/yC_train
 svmRadial_tuned <- train(
-  x       = x_train,
-  y       = yC_train,
-  method  = "svmRadial",
-  metric  = "Accuracy",    # puedes cambiar a "F1" o "Kappa"
+  precio_categoria ~ . -SalePrice,  
+  data = train,                   
+  method = "svmRadial",
+  metric = "Accuracy",
   trControl = ctrl,
-  tuneGrid  = grid,
-  preProc   = c("center","scale")
+  tuneGrid = grid,
+  preProc = c("center", "scale")
 )
-
 # 4) Resultados
 print(svmRadial_tuned)
 
@@ -407,7 +395,7 @@ print(best)
 Entre los 3 modelos anteriores se decidió ajustar el modelo radial, pues es más flexible que el lineal y fue un poco pero que el lineal. Posiblemente al ajustarlo su desempeño mejore. 
 
 
-```{r, mejores hiperparametros, echo=FALSE}
+```{r, mejores hiperparametros 2, echo=FALSE}
 
 best <- svmRadial_tuned$bestTune
 cat("Mejores hiperparámetros:\n")
@@ -418,12 +406,12 @@ print(best)
 
 ```{r, echo=FALSE}
 # Predicciones con el modelo ajustado
-pred_train_tuned <- predict(svmRadial_tuned, newdata = x_train)
-pred_test_tuned  <- predict(svmRadial_tuned, newdata = x_test)
+pred_train_tuned <- predict(svmRadial_tuned, newdata = train)
+pred_test_tuned  <- predict(svmRadial_tuned, newdata = test)
 
 # Matrices de confusión
-m_train_tuned <- confusionMatrix(pred_train_tuned, yC_train)
-m_test_tuned  <- confusionMatrix(pred_test_tuned, yC_test)
+m_train_tuned <- confusionMatrix(pred_train_tuned, train$precio_categoria)
+m_test_tuned  <- confusionMatrix(pred_test_tuned, test$precio_categoria)
 
 
 # Usar la función definida previamente
@@ -438,38 +426,37 @@ kable(metrics_tuned, digits = 3, caption = "Métricas macro‑promediadas del mo
 ```
 El modelo tuneado tiene claramente sobre ajuste y es peor, por lo que vamos a volver a ujustarlo pero separando los datos de entrenamiento en 2 entrenamiento y validación para evitar sobre ajuste.
 ```{r, include=FALSE}
-# Cargar librería necesaria
-
 # Crear partición: 80% para entrenamiento, 20% para validación
 set.seed(123)
-trainIndex <- createDataPartition(yC_train, p = 0.8, list = FALSE)
-x_subtrain <- x_train[trainIndex, ]
-y_subtrain <- yC_train[trainIndex]
-x_valid    <- x_train[-trainIndex, ]
-y_valid    <- yC_train[-trainIndex]
-
+trainIndex <- createDataPartition(train$precio_categoria, p = 0.8, list = FALSE)
+subtrain <- train[trainIndex, ]
+valid <- train[-trainIndex, ]
 
 # Definir grid de hiperparámetros
 tune_grid <- expand.grid(
-  sigma = c(0.001, 0.01, 0.05),
-  C = c(1, 10, 100)
+  sigma = c(0.001, 0.01, 0.05),  # Parámetro del kernel radial
+  C = c(1, 10, 100)               # Parámetro de costo
 )
 
 # Control de entrenamiento con validación cruzada interna
-ctrl <- trainControl(method = "cv", number = 5)
+ctrl <- trainControl(
+  method = "cv", 
+  number = 5,
+  classProbs = TRUE,              # Necesario para classification
+  summaryFunction = multiClassSummary  # Para métricas multiclase
+)
 
-# Ajustar modelo
+# Ajustar modelo SVM Radial
 set.seed(123)
 svmRadial_tuned_cv <- train(
-  x = x_subtrain,
-  y = y_subtrain,
+  precio_categoria ~ . -SalePrice,  # Fórmula que excluye SalePrice
+  data = subtrain,
   method = "svmRadial",
   tuneGrid = tune_grid,
   trControl = ctrl,
   preProcess = c("center", "scale"),
-  metric = "Accuracy"
+  metric = "Accuracy"               # Métrica a optimizar
 )
-
 
 
 ```
@@ -482,12 +469,12 @@ print(best)
 
 ```
 ```{r, echo=FALSE}
-pred_valid_cv <- predict(svmRadial_tuned_cv, newdata = x_valid)
-pred_test_cv  <- predict(svmRadial_tuned_cv, newdata = x_test)
+pred_valid_cv <- predict(svmRadial_tuned_cv, newdata = train)
+pred_test_cv  <- predict(svmRadial_tuned_cv, newdata = test)
 
 # Matrices de confusión ya obtenidas
-m_valid_cv <- confusionMatrix(pred_valid_cv, y_valid)
-m_test_cv  <- confusionMatrix(pred_test_cv, yC_test)
+m_valid_cv <- confusionMatrix(pred_valid_cv, train$precio_categoria)
+m_test_cv  <- confusionMatrix(pred_test_cv, test$precio_categoria)
 
 # Armar tabla con métricas macro-promediadas
 metrics_cv <- rbind(
@@ -496,7 +483,7 @@ metrics_cv <- rbind(
 )
 
 # Mostrar tabla con formato limpio
-kable(metrics_cv, digits = 3, caption = "Métricas del modelo SVM Radial tuneado (con validación)")
+kable(metrics_cv, digits = 3, caption = "Métricas del modelo SVM Radial tuneado (con train)")
 
 
 ```
@@ -519,7 +506,7 @@ ggplot(conf_df, aes(x = Prediction, y = Reference, fill = Freq)) +
 
 ```
 
-Viendo las métricas y las matrices de confusión y las metricas el modelo tuneado radial parece ser un poco mejor que el lineal, pero por muy poco. 
+Viendo las métricas y las matrices de confusión y las métricas el modelo tuneado radial parece ser un poco mejor que el lineal, pero por muy poco. 
 
 
 
@@ -533,3 +520,15 @@ Viendo las métricas y las matrices de confusión y las metricas el modelo tunea
 # Modelo de Regresion con redes Neuronales
 
 # Comparacion de todos los modelos de regresion usados a lo largo del proyecto
+
+
+
+
+
+
+
+
+
+
+
+
