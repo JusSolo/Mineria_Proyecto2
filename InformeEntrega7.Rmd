@@ -1,0 +1,438 @@
+---
+title: "Informe Proyecto 2 entrega 7"
+author:
+- "Juan Luis Solórzano (carnet: 201598)"
+- "Micaela Yataz (carnet: 18960)"
+date: "2025-01-20"
+output: pdf_document
+---
+
+<https://github.com/JusSolo/Mineria_Proyecto2.git>
+
+```{r, include=FALSE , librerias}
+# Cargar librerías necesarias
+library(randomForest)
+library(dplyr)
+library(GGally)
+library(ggplot2)
+library(tidyr)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(glmnet)
+library(e1071)
+library(Metrics)
+library(tidyverse)
+library(class)
+library(corrplot)
+library(MLmetrics)
+library(kernlab)
+
+
+# Cargar la base de datos
+datos <- read.csv('train.csv')
+
+# Definir variables cuantitativas
+vars_cuantitativas <- c("SalePrice", "LotFrontage", "LotArea", "OverallQual", "OverallCond", 
+                        "YearBuilt", "YearRemodAdd", "MasVnrArea", "BsmtFinSF1", "BsmtFinSF2", 
+                        "BsmtUnfSF", "TotalBsmtSF", "X1stFlrSF", "X2ndFlrSF", "LowQualFinSF", 
+                        "GrLivArea", "BsmtFullBath", "BsmtHalfBath", "FullBath", "HalfBath", 
+                        "BedroomAbvGr", "KitchenAbvGr", "TotRmsAbvGrd", "Fireplaces", "GarageYrBlt", 
+                        "GarageCars", "GarageArea", "WoodDeckSF", "OpenPorchSF", "EnclosedPorch", 
+                        "X3SsnPorch", "ScreenPorch", "PoolArea", "MiscVal", "MoSold", "YrSold")
+
+# Imputar valores faltantes en variables específicas
+datos <- datos %>%
+  mutate(
+    LotFrontage = ifelse(is.na(LotFrontage), 0, LotFrontage),
+    MasVnrArea = ifelse(is.na(MasVnrArea), 0, MasVnrArea),
+    GarageYrBlt = ifelse(is.na(GarageYrBlt), median(GarageYrBlt, na.rm = TRUE), GarageYrBlt)
+  )
+
+# Seleccionar solo variables cuantitativas
+datosC <- datos[, vars_cuantitativas]
+```
+
+```{r, recuperacion de el training y test, include=FALSE}
+y <- datos$SalePrice
+set.seed(123)
+trainI<- createDataPartition(y, p=0.7, list=FALSE)
+
+train <- datosC[trainI, ]
+test <- datosC[-trainI, ]
+
+
+train$precio_categoria<-cut(train$SalePrice, 
+                            breaks = c(0, 129975, 214000,Inf),
+                            labels = c("Economica", "Intermedia", "Cara" ),
+                            include.lowest = TRUE)
+
+test$precio_categoria<-cut(test$SalePrice, 
+                            breaks = c(0, 129975, 214000, Inf),
+                            labels = c("Economica", "Intermedia", "Cara"),
+                            include.lowest = TRUE)
+
+x_train<-train[, !(names(train) %in% c("SalePrice", "precio_categoria"))]
+yC_train<-train$precio_categoria
+yR_train<-train$SalePrice
+
+
+x_test<- test[, !(names(test) %in% c("SalePrice", "precio_categoria"))]
+yC_test<-test$precio_categoria
+yR_test<-test$SalePrice
+
+# Eliminar varibles que ya no se usaran:
+rm(datos)
+rm(datosC)
+rm(test)
+rm(train)
+rm(trainI)
+
+```
+
+# git: <https://github.com/JusSolo/Mineria_Proyecto2.git>
+
+# Introducción:
+
+A lo largo del semestre hemos usado diferentes modelos de aprendizaje supervisado tanto en su version de clasificación como de regresión. Para este último informe del proyecto 2 se pretende probar máquina de vectores de soporte con diferentes topológias para clasificar los precios de las casas en categorías y otras redes para predecir el precio de las mismas. Por otro lado se desea comparar todos los modelos anteriores.
+
+# Modelo de Clasificación con redes Neuronales
+
+### Comparacion de primeros 3 modelos con distintos kernels
+
+```{r, K svm con kernel lineal, include=FALSE}
+# Modelo SVM con kernel lineal
+Cla_svm1 <- svm(yC_train ~ ., data = x_train, kernel = "linear", scale = TRUE)
+
+# Predicciones en el conjunto de prueba
+pred_svm_model1 <- predict(Cla_svm1, newdata = x_test)
+
+# Matriz de confusión
+m1 <- confusionMatrix(pred_svm_model1, yC_test)
+```
+
+```{r, K modelo radial, include=FALSE}
+# Modelo SVM con kernel radial
+Cla_svm2 <- svm(yC_train ~ ., data = x_train, kernel = "radial", scale = TRUE)
+
+# Predicciones en el conjunto de prueba
+pred_svm_model2 <- predict(Cla_svm2, newdata = x_test)
+
+# Matriz de confusión
+m2 <- confusionMatrix(pred_svm_model2, yC_test)
+
+```
+
+```{r, Kmodelo polinomial, include=FALSE}
+# Modelo SVM con kernel polinomial
+Cla_svm3 <- svm(yC_train ~ ., data = x_train, kernel = "polynomial", degree = 5, scale = TRUE)
+
+# Predicciones en el conjunto de prueba
+pred_svm_model3 <- predict(Cla_svm3, newdata = x_test)
+
+# Matriz de confusión
+m3 <- confusionMatrix(pred_svm_model3, yC_test)
+
+```
+
+```{r, echo=FALSE,KMatrizConfucion}
+# --- Paquetes necesarios ---
+library(ggplot2)
+library(patchwork)
+
+# --- 1) Preparar heatmaps de confusión --- 
+
+# Función mejorada que convierte confusionMatrix a data.frame
+cm_to_df <- function(cm, model_name) {
+  df <- as.data.frame(cm$table)
+  names(df) <- c("Reference", "Prediction", "Freq")
+  df$Reference <- factor(df$Reference, levels = rev(levels(df$Reference)))
+  df$Model <- model_name  # Añadir columna para identificar el modelo
+  df
+}
+
+# Extraer los data.frames con nombres de modelo
+df1 <- cm_to_df(m1, "Lineal")
+df2 <- cm_to_df(m2, "Radial")
+df3 <- cm_to_df(m3, "Polinomial")
+
+# Combinar todos los datos para escala consistente
+combined_df <- rbind(df1, df2, df3)
+max_freq <- max(combined_df$Freq)
+
+# Función de visualización mejorada
+plot_cm <- function(df) {
+  ggplot(df, aes(x = Prediction, y = Reference, fill = Freq)) +
+    geom_tile(color = "white", linewidth = 0.5) +
+    geom_text(aes(label = Freq), size = 4, color = "black") +
+    scale_fill_gradientn(
+      limits = c(0, max_freq),
+      colors = c("#f7fbff", "#4292c6", "#08306b"),
+      na.value = "white"
+    ) +
+    facet_wrap(~Model, ncol = 1) +  # Mostrar en vertical
+    labs(title = "Matrices de Confusión por Modelo") +
+    theme_minimal(base_size = 12) +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+      axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+      strip.text = element_text(face = "bold", size = 12),
+      panel.spacing = unit(1, "lines"),
+      legend.position = "right"
+    ) +
+    coord_fixed() +
+    labs(x = "Predicción", y = "Valor Real")
+}
+
+# Visualización única con facetas verticales
+plot_cm(combined_df)
+```
+Observando las matrices de confución se puede concluir que los 3 modelos se equivocan más clasificando la categoría de las casas intermedias. El modelo radial y lineal parecen ser los mejores, Siendo el radial más equilibrado y el lineal mejor en la clasificacion entre las casas econimicas e intermedias. 
+
+```{r, echo=FALSE, KMetricasTest}
+library(dplyr)
+library(knitr)
+
+# función que, dado un objeto confusionMatrix, devuelve un data.frame con métricas agregadas
+get_metrics <- function(cm){
+  # métricas globales
+  acc  <- cm$overall["Accuracy"]
+  kap  <- cm$overall["Kappa"]
+  # por‑clase
+  sens <- cm$byClass[,"Sensitivity"]
+  prec <- cm$byClass[,"Pos Pred Value"]
+  # promedios macro
+  macro_sens  <- mean(sens, na.rm=TRUE)
+  macro_prec  <- mean(prec, na.rm=TRUE)
+  macro_f1    <- mean(2 * sens * prec / (sens + prec), na.rm=TRUE)
+  data.frame(
+    Accuracy    = acc,
+    Kappa       = kap,
+    Sensitivity = macro_sens,
+    Precision   = macro_prec,
+    F1          = macro_f1
+  )
+}
+
+# ensamblar tabla
+metrics <- rbind(
+  Linear     = get_metrics(m1),
+  Radial     = get_metrics(m2),
+  Polynomial = get_metrics(m3)
+)
+
+# mostrar con 3 decimales
+kable(metrics, digits = 3, caption = "Comparación de métricas macro‑promediadas para los 3 modelos SVM usando datos de prueba")
+
+```
+
+
+```{r, echo=FALSE, KmetricasTrain}
+# Predicciones sobre entrenamiento
+pred_train1 <- predict(Cla_svm1, newdata = x_train)
+pred_train2 <- predict(Cla_svm2, newdata = x_train)
+pred_train3 <- predict(Cla_svm3, newdata = x_train)
+
+# Métricas de evaluación en train
+m_train1 <- confusionMatrix(pred_train1, yC_train)
+m_train2 <- confusionMatrix(pred_train2, yC_train)
+m_train3 <- confusionMatrix(pred_train3, yC_train)
+
+
+
+# ensamblar tabla
+metrics <- rbind(
+  Linear     = get_metrics(m_train1),
+  Radial     = get_metrics(m_train2),
+  Polynomial = get_metrics(m_train3)
+)
+
+# mostrar con 3 decimales
+kable(metrics, digits = 3, caption = "Comparación de métricas macro‑promediadas para los 3 modelos SVM usando datos de entrenamiento")
+```
+
+
+
+
+Comparado ambas tablas el único modelo que parece sobre ajustado es el polynomial, pues es que tiene mayores diferencias en las métricas de desempeño con los datos de prueba y entrenamiento. 
+
+
+
+
+
+
+
+
+## Modelo ajustado
+
+```{r, ajustar svm clustering, include=FALSE}
+
+set.seed(2025)
+
+# 1) Defino control de entrenamiento: 5‑fold CV estratificado
+ctrl <- trainControl(
+  method      = "cv",
+  number      = 5,
+  classProbs  = TRUE,
+  summaryFunction = multiClassSummary,
+  verboseIter = TRUE
+)
+
+# 2) Defino la malla de búsqueda para C y sigma (γ)
+# caret usa 'sigma' en lugar de γ
+grid <- expand.grid(
+  C     = 10^seq(-2, 2, length = 5),
+  sigma = 10^seq(-3, 1, length = 5)
+)
+
+# 3) Ejecuto train() sobre x_train/yC_train
+svmRadial_tuned <- train(
+  x       = x_train,
+  y       = yC_train,
+  method  = "svmRadial",
+  metric  = "Accuracy",    # puedes cambiar a "F1" o "Kappa"
+  trControl = ctrl,
+  tuneGrid  = grid,
+  preProc   = c("center","scale")
+)
+
+# 4) Resultados
+print(svmRadial_tuned)
+
+# 5) Mejor combinación
+best <- svmRadial_tuned$bestTune
+cat("Mejores hiperparámetros:\n")
+print(best)
+
+```
+
+
+Entre los 3 modelos anteriores se decidió ajustar el modelo radial, pues es más flexible que el lineal y fue un poco pero que el lineal. Posiblemente al ajustarlo su desempeño mejore. 
+
+
+```{r, mejores hiperparametros, echo=FALSE}
+
+best <- svmRadial_tuned$bestTune
+cat("Mejores hiperparámetros:\n")
+print(best)
+
+```
+
+
+```{r, echo=FALSE}
+# Predicciones con el modelo ajustado
+pred_train_tuned <- predict(svmRadial_tuned, newdata = x_train)
+pred_test_tuned  <- predict(svmRadial_tuned, newdata = x_test)
+
+# Matrices de confusión
+m_train_tuned <- confusionMatrix(pred_train_tuned, yC_train)
+m_test_tuned  <- confusionMatrix(pred_test_tuned, yC_test)
+
+
+# Usar la función definida previamente
+metrics_tuned <- rbind(
+  "Tuned Radial (Train)" = get_metrics(m_train_tuned),
+  "Tuned Radial (Test)"  = get_metrics(m_test_tuned)
+)
+
+# Mostrar en tabla
+kable(metrics_tuned, digits = 3, caption = "Métricas macro‑promediadas del modelo SVM Radial tuneado (entrenamiento vs prueba)")
+
+```
+El modelo tuneado tiene claramente sobre ajuste y es peor, por lo que vamos a volver a ujustarlo pero separando los datos de entrenamiento en 2 entrenamiento y validación para evitar sobre ajuste.
+```{r, include=FALSE}
+# Cargar librería necesaria
+
+# Crear partición: 80% para entrenamiento, 20% para validación
+set.seed(123)
+trainIndex <- createDataPartition(yC_train, p = 0.8, list = FALSE)
+x_subtrain <- x_train[trainIndex, ]
+y_subtrain <- yC_train[trainIndex]
+x_valid    <- x_train[-trainIndex, ]
+y_valid    <- yC_train[-trainIndex]
+
+
+# Definir grid de hiperparámetros
+tune_grid <- expand.grid(
+  sigma = c(0.001, 0.01, 0.05),
+  C = c(1, 10, 100)
+)
+
+# Control de entrenamiento con validación cruzada interna
+ctrl <- trainControl(method = "cv", number = 5)
+
+# Ajustar modelo
+set.seed(123)
+svmRadial_tuned_cv <- train(
+  x = x_subtrain,
+  y = y_subtrain,
+  method = "svmRadial",
+  tuneGrid = tune_grid,
+  trControl = ctrl,
+  preProcess = c("center", "scale"),
+  metric = "Accuracy"
+)
+
+
+
+```
+
+```{r, mejores hiperparametros, echo=FALSE}
+
+best <- svmRadial_tuned_cv$bestTune
+cat("Mejores hiperparámetros:\n")
+print(best)
+
+```
+```{r, echo=FALSE}
+pred_valid_cv <- predict(svmRadial_tuned_cv, newdata = x_valid)
+pred_test_cv  <- predict(svmRadial_tuned_cv, newdata = x_test)
+
+# Matrices de confusión ya obtenidas
+m_valid_cv <- confusionMatrix(pred_valid_cv, y_valid)
+m_test_cv  <- confusionMatrix(pred_test_cv, yC_test)
+
+# Armar tabla con métricas macro-promediadas
+metrics_cv <- rbind(
+  "Validación (subtrain)" = get_metrics(m_valid_cv),
+  "Prueba (test final)"   = get_metrics(m_test_cv)
+)
+
+# Mostrar tabla con formato limpio
+kable(metrics_cv, digits = 3, caption = "Métricas del modelo SVM Radial tuneado (con validación)")
+
+
+```
+
+```{r, echo=FALSE}
+# Extraer la tabla de confusión como data frame
+conf_df <- as.data.frame(m_test_cv$table)
+
+# Graficar como heatmap
+ggplot(conf_df, aes(x = Prediction, y = Reference, fill = Freq)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = Freq), color = "black", size = 5) +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(
+    title = "Matriz de Confusión - Modelo SVM Radial (Test)",
+    x = "Predicción",
+    y = "Valor Real"
+  ) +
+  theme_minimal()
+
+```
+
+Viendo las métricas y las matrices de confusión y las metricas el modelo tuneado radial parece ser un poco mejor que el lineal, pero por muy poco. 
+
+
+
+# Comparacion de todos los modelos de clasificacion usados a lo largo del proyecto
+
+
+
+
+
+
+# Modelo de Regresion con redes Neuronales
+
+# Comparacion de todos los modelos de regresion usados a lo largo del proyecto
