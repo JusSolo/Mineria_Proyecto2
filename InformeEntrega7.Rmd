@@ -81,14 +81,111 @@ x_test<- test[, !(names(test) %in% c("SalePrice", "precio_categoria"))]
 yC_test<-test$precio_categoria
 yR_test<-test$SalePrice
 
-# Eliminar varibles que ya no se usaran:
-rm(datos)
-rm(datosC)
-rm(test)
-rm(train)
-rm(trainI)
+
 
 ```
+
+```{r, modelos de entregas anteriores, include=FALSE}
+
+
+# ---------------------------------------------------------------
+# PASO 2: Definir y entrenar modelos de REGRESIÓN
+# ---------------------------------------------------------------
+
+# 1. Regresión Lineal (Entregas 1 y 3)
+Rlineal <- train(
+  SalePrice ~ .,
+  data = train,
+  method = "glmnet",
+  tuneGrid = expand.grid(alpha = 1, lambda = 0.001),  # Mejor ajuste de entregas anteriores
+  trControl = trainControl(method = "cv", number = 5)
+)
+
+# 2. Árbol de Regresión (Entrega 2)
+Rarbol <- rpart(
+  SalePrice ~ .,
+  data = train,
+  control = rpart.control(maxdepth = 5, cp = 0.01)  # Parámetros óptimos
+)
+
+# 3. Naive Bayes para Regresión (Entrega 3)
+RnaiveBayes <- naiveBayes(
+  SalePrice ~ .,
+  data = train
+)
+
+# 4. KNN para Regresión (Entrega 4)
+set.seed(123)
+RKNN <- train(
+  SalePrice ~ .,
+  data = train,
+  method = "knn",
+  tuneGrid = expand.grid(k = 9),  # Mejor k según entrega 4
+  preProcess = c("center", "scale")
+)
+
+# 5. Regresión Logística (Entregas 5-6) - Ajustado para regresión
+RLogistic <- glm(
+  SalePrice ~ .,
+  data = train,
+  family = gaussian()
+)
+
+# ---------------------------------------------------------------
+# PASO 3: Definir y entrenar modelos de CLASIFICACIÓN
+# ---------------------------------------------------------------
+
+# 1. Regresión Logística para Clasificación (Entrega 5)
+CLogistic <- train(
+  precio_categoria ~ .,
+  data = train,
+  method = "multinom",
+  trControl = trainControl(method = "cv", number = 5)
+)
+
+# 2. Árbol de Clasificación (Entrega 2)
+Carbol <- rpart(
+  precio_categoria ~ .,
+  data = train,
+  control = rpart.control(maxdepth = 3, cp = 0.01)  # Parámetros óptimos
+)
+
+# 3. Naive Bayes para Clasificación (Entrega 3)
+CnaiveBayes <- naiveBayes(
+  precio_categoria ~ .,
+  data = train
+)
+
+# 4. KNN para Clasificación (Entrega 4)
+set.seed(123)
+CKNN <- train(
+  precio_categoria ~ .,
+  data = train,
+  method = "knn",
+  tuneGrid = expand.grid(k = 9),  # Mejor k según entrega 4
+  preProcess = c("center", "scale")
+)
+
+# 5. Random Forest (Entregas 2 y 7) - Mejor modelo según entregas
+set.seed(123)
+Crf <- train(
+  precio_categoria ~ .,
+  data = train,
+  method = "rf",
+  ntree = 500,
+  importance = TRUE
+)
+
+# ---------------------------------------------------------------
+# PASO 4: Guardar modelos (opcional)
+# ---------------------------------------------------------------
+save(Rlineal, Rarbol, RnaiveBayes, RKNN, RLogistic,
+     CLogistic, Carbol, CnaiveBayes, CKNN, Crf,
+     file = "modelos_proyecto.RData")
+```
+
+
+
 
 # git: <https://github.com/JusSolo/Mineria_Proyecto2.git>
 
