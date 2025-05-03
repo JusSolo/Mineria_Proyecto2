@@ -140,7 +140,7 @@ CLogistic <- train(
 Carbol <- rpart(
   precio_categoria ~ .-SalePrice,
   data = train,
-  control = rpart.control(maxdepth = 3, cp = 0.01)  # Parámetros óptimos
+  control = rpart.control(maxdepth = 5, cp = 0.01)  # Parámetros óptimos
 )
 
 # 3. Naive Bayes para Clasificación (Entrega 3)
@@ -512,14 +512,169 @@ Viendo las métricas y las matrices de confusión y las métricas el modelo tune
 
 # Comparacion de todos los modelos de clasificacion usados a lo largo del proyecto
 
+### Matrices de confución
+
+```{r, echo=FALSE}
+# Calcular cada matriz de confusión por separado
+conf_matrix_rlog <- confusionMatrix(
+  predict(CLogistic, newdata = test),
+  test$precio_categoria
+)
+
+preds_arbol <- predict(Carbol, newdata = test, type = "class")
+conf_matrix_arbol <- confusionMatrix(factor(preds_arbol, levels = levels(test$precio_categoria)), 
+                                    test$precio_categoria)
 
 
 
+conf_matrix_nb <- confusionMatrix(
+  predict(CnaiveBayes, newdata = test),
+  test$precio_categoria
+)
+
+conf_matrix_knn <- confusionMatrix(
+  predict(CKNN, newdata = test),
+  test$precio_categoria
+)
+
+conf_matrix_rf <- confusionMatrix(
+  predict(Crf, newdata = test),
+  test$precio_categoria
+)
+
+conf_matrix_svm <- confusionMatrix(
+  predict(svmRadial_tuned_cv, newdata = test),
+  test$precio_categoria
+)
+
+# Convertir cada matriz a data.frame
+df_rlog <- cm_to_df(conf_matrix_rlog, "Logística")
+df_arbol <- cm_to_df(conf_matrix_arbol, "Árbol")
+df_nb <- cm_to_df(conf_matrix_nb, "N Bayes")
+df_knn <- cm_to_df(conf_matrix_knn, "KNN")
+df_rf <- cm_to_df(conf_matrix_rf, "R Forest")
+df_svm <- cm_to_df(conf_matrix_svm, "SVM Rad")
+
+# Combinar todos los data.frames
+combined_df1 <- rbind(df_rlog, df_arbol, df_nb)
+combined_df2 <- rbind( df_knn, df_rf, df_svm)
+
+# Visualización (asumiendo que plot_cm está definida)
+plot_cm(combined_df1)
+plot_cm(combined_df2)
+```
+Observado las matrices de confucion se puede notar que naive bayes el el único modelo que no clasifica para nada bien. Los demás parecen mas o menos igual de buenos clasificando, observar las matrices de confucion es un poco engorroso. 
+
+### Tablas comparando Espacio en memoría usada en ejecucion y tiempo de ejecucion
+
+```{r, include=FALSE}
+accuracy_arbol <- conf_matrix_arbol$overall["Accuracy"]
+```
 
 
+```{r, compara tiempo de ejecucion memoria usada y precicion, echo=FALSE}
+#' Perfilar modelos de clasificación
+#'
+#' @param modelos Lista de modelos a evaluar
+#' @param datos Datos de test para evaluación
+#' @param target Nombre de la variable objetivo
+#' @return Dataframe con métricas de performance
+profile_modelos <- function(modelos, datos, target) {
+  library(pryr)
+  library(microbenchmark)
+  library(dplyr)
+  
+  resultados <- data.frame()
+  
+  for (nombre in names(modelos)) {
+    modelo <- modelos[[nombre]]
+    
+    # Medir tiempo de predicción
+    tiempo <- microbenchmark(
+      predict(modelo, newdata = datos),
+      times = 10,
+      unit = "ms"
+    ) %>% summary() %>% pull(median)
+    
+    # Medir uso de memoria
+    mem_size <- object_size(modelo) %>% as.numeric()
+    
+    # Calcular precisión
+    preds <- predict(modelo, newdata = datos)
+    acc <- mean(preds == datos[[target]])
+    
+    # Almacenar resultados
+    resultados <- rbind(resultados, data.frame(
+      Modelo = nombre,
+      Tiempo_prediccion_ms = tiempo,
+      Memoria_MB = round(mem_size/1024/1024, 2),
+      Accuracy = round(acc, 4)
+    ))
+  }
+  
+  return(resultados)
+}
+
+# Preparar los modelos en una lista nombrada
+modelos_a_comparar <- list(
+  "Regresión Logística" = CLogistic,
+  "Árbol de Decisión" = Carbol,
+  "Naive Bayes" = CnaiveBayes,
+  "KNN" = CKNN,
+  "Random Forest" = Crf,
+  "SVM Radial" = svmRadial_tuned_cv
+)
+
+# Ejecutar el profiling
+resultados_comparacion <- profile_modelos(
+  modelos = modelos_a_comparar,
+  datos = test,
+  target = "precio_categoria"
+)
+
+resultados_comparacion$Accuracy[2] <- accuracy_arbol
+
+# Mostrar resultados ordenados por tiempo
+resultados_comparacion %>% 
+  arrange(Tiempo_prediccion_ms) %>%
+  knitr::kable(
+    caption = "Comparación de complejidad espacial y temporal de modelos ordenados por tiempo de ejecucion",
+    col.names = c("Modelo", "Tiempo (ms)", "Memoria (MB)", "Precisión"),
+    digits = 3
+  )
+
+# Mostrar resultados ordenados por memoria
+resultados_comparacion %>% 
+  arrange(Memoria_MB) %>%
+  knitr::kable(
+    caption = "Comparación de complejidad espacial y temporal de modelos ordenados por espacio en memoria",
+    col.names = c("Modelo", "Tiempo (ms)", "Memoria (MB)", "Precisión"),
+    digits = 3
+  )
+
+
+
+```
+```{r, echo=FALSE}
+
+resultados_comparacion %>%
+  arrange(desc(Accuracy)) %>%
+  knitr::kable(
+    caption = "Comparación de modelos ordenados por precisión",
+    col.names = c("Modelo", "Tiempo (ms)", "Memoria (MB)", "Precisión"),
+    digits = 3
+  )
+
+```
+
+Arriba se puede observar la misma tabla pero ordenada según cada una de sus columnas. Como el SVN es el único modelo que aparece en el top 3 en las 3 tablas podemos considerar que en términos generales es el mejor modelo. Si se toma en cuenta el tiempo de ejecución y la presicion el mejor modelo es la regresión logística, pero es el segundo que ocupa más memoria. Para estos datos de la manera que fueron tratados el peor modelo es Naive Bayes, esto puede deberse a que algunas de las variables no son independientes (ir a ver nalisis exploratorio informe 1). 
+  En conclucion exceptuando Naive Bayes todos los modelos funcionan. Si se necesitara un modelo muy rapido y que no ocupe mucha memorio (en la ejecucion) el algoritmo a elegir sería El Árbo de desicion. Si se buscara la presicion a toda costa seria el Random Forest el elegido. Pero si se desea un eqilibrio entre los 3 el modelo a elegir sería le regresión logística (si no importa mucho el espacio en memoría) y un SVM radial (si no importa que el tiempo de ejecucion sea mas lento).
+  En conclusión no hay un modelo que sea el mejor en todo. El que se elija usar debería ser el que se pueda ejecutar en el tiempo y espeacio que se requiere con la presicion más alta. Para tomar esa desicion podria ser util usar alguna funcion de costo que pondere las metricas y elegir el modelo que lo minimice y cumpla con las restricciones. 
+  
 # Modelo de Regresion con redes Neuronales
 
 # Comparacion de todos los modelos de regresion usados a lo largo del proyecto
+
 
 
 
