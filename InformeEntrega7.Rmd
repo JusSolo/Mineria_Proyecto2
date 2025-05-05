@@ -673,7 +673,253 @@ Arriba se puede observar la misma tabla pero ordenada según cada una de sus col
   
 # Modelo de Regresion con redes Neuronales
 
-# Comparacion de todos los modelos de regresion usados a lo largo del proyecto
+Para los modelos de regresión, se seleccionó la variable (SalePrice) como variable respuesta, ya que es el que representa el precio de venta de las casas y es el objetivo principal.
+
+Se entrenan dos modelos de redes neuronales con distintas topoloias y parámetros, entrenados con validacion cruzada.
+```{r include=FALSE}
+library(nnet)
+
+# Modelo 1: Red neuronal simple
+set.seed(123)
+RNA1 <- train(
+  SalePrice ~ . -precio_categoria,
+  data = train,
+  method = "nnet",
+  linout = TRUE,
+  trace = FALSE,
+  tuneGrid = expand.grid(size = 5, decay = 0.01),
+  trControl = trainControl(method = "cv", number = 5)
+)
+
+# Modelo 2: Topología diferente
+set.seed(123)
+RNA2 <- train(
+  SalePrice ~ . -precio_categoria,
+  data = train,
+  method = "nnet",
+  linout = TRUE,
+  trace = FALSE,
+  tuneGrid = expand.grid(size = 10, decay = 0.001),
+  trControl = trainControl(method = "cv", number = 5)
+)
+
+```
+
+
+```{r,  include=FALSE}
+# Evaluar RMSE en test
+pred1 <- predict(RNA1, newdata = test)
+pred2 <- predict(RNA2, newdata = test)
+
+rmse1 <- RMSE(pred1, test$SalePrice)
+rmse2 <- RMSE(pred2, test$SalePrice)
+
+data.frame(Modelo = c("RNA1", "RNA2"), RMSE = c(rmse1, rmse2))
+
+
+```
+Al comparar los dos modelos de redes neuronales, se observa que el modelo RNA1 tiene un RMSE de 63260.48 a comparación con RNA2 que tiene un RMSE de 76804.70, indicando que RNA1 es el que mejor rendimiento tiene de estos dos modelos. 
+
+```{r include=FALSE}
+library(nnet)
+library(caret)
+library(Metrics)
+
+set.seed(123)
+
+# Grid de parámetros
+tune_grid <- expand.grid(
+  size = c(3, 5, 7, 10),
+  decay = c(0.0001, 0.001, 0.01)
+)
+
+# Entrenamiento con validación cruzada
+RNA_cv <- train(
+  SalePrice ~ . -precio_categoria,
+  data = train,
+  method = "nnet",
+  linout = TRUE,
+  trace = FALSE,
+  tuneGrid = tune_grid,
+  trControl = trainControl(method = "cv", number = 5)
+)
+
+```
+
+
+La verificacion de sobreajusto se realizó una gráfica de curva de aprendizaje. En el que no hay sobreajuste. 
+
+
+```{r,  include=FALSE}
+# Mostrar combinación óptima de parámetros
+RNA_cv$bestTune
+
+# Crear tabla de resultados
+resultados <- data.frame()
+
+for (i in 1:nrow(tune_grid)) {
+  params <- tune_grid[i, ]
+
+  modelo <- nnet(
+    SalePrice ~ . -precio_categoria,
+    data = train,
+    linout = TRUE,
+    size = params$size,
+    decay = params$decay,
+    maxit = 500,
+    trace = FALSE
+  )
+
+  # Predicciones en training y test
+  pred_train <- predict(modelo, train)
+  pred_test <- predict(modelo, test)
+
+  # Calcular errores
+  rmse_train <- RMSE(pred_train, train$SalePrice)
+  rmse_test <- RMSE(pred_test, test$SalePrice)
+
+  # Guardar resultados
+  resultados <- rbind(resultados, data.frame(
+    size = params$size,
+    decay = params$decay,
+    RMSE_Train = rmse_train,
+    RMSE_Test = rmse_test
+  ))
+}
+
+print(resultados)
+
+
+```
+
+
+
+```{r,  include=FALSE}
+library(ggplot2)
+
+ggplot(resultados, aes(x = interaction(size, decay))) +
+  geom_line(aes(y = RMSE_Train, group = 1, color = "Train")) +
+  geom_line(aes(y = RMSE_Test, group = 1, color = "Test")) +
+  labs(
+    x = "Topología (size-decay)", y = "RMSE",
+    title = "Curva de aprendizaje - RNA",
+    color = "Dataset"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+Se realizó sobreajuste al modelo RNA utilizando la validacion cruzada, mostrando que la mejor combinacion fue: el de tamaño 5 y decay 0.1
+
+
+```{r,  echo=FALSE}
+grid <- expand.grid(size = c(5, 10, 15), decay = c(0.001, 0.01, 0.1))
+
+set.seed(123)
+RNA_tuned <- train(
+  SalePrice ~ . -precio_categoria,
+  data = train,
+  method = "nnet",
+  linout = TRUE,
+  trace = FALSE,
+  tuneGrid = grid,
+  trControl = trainControl(method = "cv", number = 5)
+)
+
+# Ver mejor combinación
+RNA_tuned$bestTune
+
+```
+
+Este modelo final mejoró levemente el RMSE respecto a los modelos iniciales, sin sobreajuste, ya que los errores se mantuvieron cercanos, tanto para entrenamiento como validación. 
+
+
+# Comparacion de todos los modelos de regresion usados a lo largo del proyecto.
+
+Se comparó el rendimiento del mejor modelo de RNA con modelos realizados anteriormente, como regresión lineal, KNN y arbol, Naive Bayes. Se muestrar a continuacion los resultados.
+
+
+
+```{r, echo=FALSE}
+resumen <- data.frame(
+  Modelo = c("Regresión Lineal", "Árbol", "KNN", "Naive Bayes", "RNA1", "RNA2", "RNA Tuned"),
+  RMSE = c(
+    RMSE(predict(Rlineal, test), test$SalePrice),
+    RMSE(predict(Rarbol, test), test$SalePrice),
+    RMSE(predict(RKNN, test), test$SalePrice),
+    NA,  # No aplica Naive Bayes para regresión directa
+    rmse1,
+    rmse2,
+    RMSE(predict(RNA_tuned, test), test$SalePrice)
+  )
+)
+print(resumen)
+
+```
+Entre todos los modelos de regresion entrenados, el mejor modelo fue de Regresion lineal ya que tiene menos error con un RMSE de 36745.35 secundado por KNN DE 39930.13. Notese que ninguno de los modelos de RNA supero a la regresion lineal 
+
+```{r, include=FALSE}
+RNA_clas <- train(
+  precio_categoria ~ . -SalePrice,
+  data = train,
+  method = "nnet",
+  trace = FALSE,
+  tuneGrid = expand.grid(size = 5, decay = 0.01),
+  trControl = trainControl(method = "cv", number = 5)
+)
+
+pred_class <- predict(RNA_clas, newdata = test)
+confusionMatrix(pred_class, test$precio_categoria)
+
+```
+```{r, echo=FALSE}
+library(randomForest)
+
+set.seed(123)
+Rforest <- train(
+  precio_categoria ~ . -SalePrice,
+  data = train,
+  method = "rf",
+  trControl = trainControl(method = "cv", number = 5)
+)
+
+
+pred_rf <- predict(Rforest, newdata = test)
+confusionMatrix(pred_rf, test$precio_categoria)
+
+```
+
+
+```{r, include=FALSE}
+
+
+
+acc_rna <- confusionMatrix(pred_class, test$precio_categoria)$overall["Accuracy"]
+acc_rf <- confusionMatrix(predict(Rforest, test), test$precio_categoria)$overall["Accuracy"]
+acc_knn <- confusionMatrix(predict(CKNN, test), test$precio_categoria)$overall["Accuracy"]
+
+accuracy_table <- data.frame(
+  Modelo = c("RNA", "Random Forest", "KNN"),
+  Accuracy = c(acc_rna, acc_rf, acc_knn)
+)
+print(accuracy_table)
+
+```
+En clasificacion, el modelo Random Forest obtuvo mejor precision, por el Acuaracy (0.8394495) segudio por KNN, el modelo RNA logro un buen desempeño, aunque no el mejor,   
+
+
+```{r, include=FALSE}
+system.time(predict(Rlineal, newdata = test))
+system.time(predict(RNA_tuned, newdata = test))
+
+```
+Dada que las redes neuronales no fueron muy precisas  en regresion, el modelo tuneado obtuvo mejor significativa respecto a RNA iniciales. Pero la regresion lineal sigue siendo el modelo mas preciso.
+
+#Conclusiones
+El mejor modelo de regresion lineal fue la regesion lineal, superando al modelo RNA tuneado.
+En clasificación, random Forest fue el mas preciso. 
+Las redes neuronales fueron utiles, pero no superaron a los medelos mas simples
+Los modelos de regresión lineal   y Random Forest son los recomendados para este conjunto de datos.
 
 
 
