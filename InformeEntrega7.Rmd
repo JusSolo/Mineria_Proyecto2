@@ -706,7 +706,7 @@ RNA2 <- train(
 ```
 
 
-```{r,  include=FALSE}
+```{r,  echo=FALSE}
 # Evaluar RMSE en test
 pred1 <- predict(RNA1, newdata = test)
 pred2 <- predict(RNA2, newdata = test)
@@ -720,7 +720,7 @@ data.frame(Modelo = c("RNA1", "RNA2"), RMSE = c(rmse1, rmse2))
 ```
 Al comparar los dos modelos de redes neuronales, se observa que el modelo RNA1 tiene un RMSE de 63260.48 a comparación con RNA2 que tiene un RMSE de 76804.70, indicando que RNA1 es el que mejor rendimiento tiene de estos dos modelos. 
 
-```{r include=FALSE}
+```{r , include=FALSE}
 library(nnet)
 library(caret)
 library(Metrics)
@@ -750,7 +750,7 @@ RNA_cv <- train(
 La verificacion de sobreajusto se realizó una gráfica de curva de aprendizaje. En el que no hay sobreajuste. 
 
 
-```{r,  include=FALSE}
+```{r,  echo=FALSE}
 # Mostrar combinación óptima de parámetros
 RNA_cv$bestTune
 
@@ -794,7 +794,7 @@ print(resultados)
 
 
 
-```{r,  include=FALSE}
+```{r,  echo=FALSE}
 library(ggplot2)
 
 ggplot(resultados, aes(x = interaction(size, decay))) +
@@ -858,7 +858,7 @@ print(resumen)
 ```
 Entre todos los modelos de regresion entrenados, el mejor modelo fue de Regresion lineal ya que tiene menos error con un RMSE de 36745.35 secundado por KNN DE 39930.13. Notese que ninguno de los modelos de RNA supero a la regresion lineal 
 
-```{r, include=FALSE}
+```{r, echo=FALSE}
 RNA_clas <- train(
   precio_categoria ~ . -SalePrice,
   data = train,
@@ -890,7 +890,7 @@ confusionMatrix(pred_rf, test$precio_categoria)
 ```
 
 
-```{r, include=FALSE}
+```{r, echo=FALSE}
 
 
 
@@ -905,20 +905,20 @@ accuracy_table <- data.frame(
 print(accuracy_table)
 
 ```
-En clasificacion, el modelo Random Forest obtuvo mejor precision, por el Acuaracy (0.8394495) segudio por KNN, el modelo RNA logro un buen desempeño, aunque no el mejor,   
+En clasificación, el modelo Random Forest obtuvo mejor precisión, por el Acuaracy (0.8394495) segudio por KNN, el modelo RNA logro un buen desempeño, aunque no el mejor,   
 
 
-```{r, include=FALSE}
+```{r, echo=FALSE}
 system.time(predict(Rlineal, newdata = test))
 system.time(predict(RNA_tuned, newdata = test))
 
 ```
-Dada que las redes neuronales no fueron muy precisas  en regresion, el modelo tuneado obtuvo mejor significativa respecto a RNA iniciales. Pero la regresion lineal sigue siendo el modelo mas preciso.
+Dada que las redes neuronales no fueron muy precisas  en regresión, el modelo tuneado obtuvo mejor significativa respecto a RNA iniciales. Pero la regresión lineal sigue siendo el modelo mas preciso.
 
-#Conclusiones
-El mejor modelo de regresion lineal fue la regesion lineal, superando al modelo RNA tuneado.
+# Conclusiones
+El mejor modelo de regresion fue la regesion lineal, superando al modelo RNA tuneado.
 En clasificación, random Forest fue el mas preciso. 
-Las redes neuronales fueron utiles, pero no superaron a los medelos mas simples
+Las redes neuronales fueron útiles, pero no superaron a los medelos mas simples
 Los modelos de regresión lineal   y Random Forest son los recomendados para este conjunto de datos.
 
 
